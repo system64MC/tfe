@@ -1,6 +1,7 @@
 import Tilengine/tilengine
 import netty
 import flatty
+import utils/vectors
 
 proc serializeInputs(): uint8 =
 
@@ -13,10 +14,7 @@ proc serializeInputs(): uint8 =
 
   return input
 
-type
-  VectorI16 = object
-    x: int16
-    y: int16
+
 
 proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
 
