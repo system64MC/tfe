@@ -1,4 +1,4 @@
-import utils/vectors
+import ../common/vectors
 
 type
     Camera* = ref object of RootObj

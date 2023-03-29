@@ -1,5 +1,5 @@
 import ../Tilengine/Tilengine
-import ../utils/vectors
+import ../../common/vectors
 
 type
     Background* = ref object of RootObj

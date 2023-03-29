@@ -1,6 +1,8 @@
 import std/[times, os]
 import netty
 import flatty
+import ./actors/player
+import ../common/vectors
 
 var timeStart* = 0.0
 var timeFinish* = 0.0
@@ -9,24 +11,14 @@ var delta* = 0.0
 const FPS* = 60.0
 const DELAY* = (1000.0 / FPS.float)
 
-var playerInput: uint8 = 0b0000_0000 # Input of player.
 
-proc inputUp():    bool = return ((playerInput and 0b0000_1000) > 0)
-proc inputDown():  bool = return ((playerInput and 0b0000_0100) > 0)
-proc inputLeft():  bool = return ((playerInput and 0b0000_0010) > 0)
-proc inputRight(): bool = return ((playerInput and 0b0000_0001) > 0)
-
-
-type
-  VectorI16 = object
-    x: int16
-    y: int16
-
-proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
-proc serializePos(vec: VectorI16): string = return toFlatty(vec)
+# proc serializePos(vec: VectorI16): string = return toFlatty(vec)
 
 proc main() =
-  var playerPos = VectorI16(x: 50, y: 50)
+  # var playerPos = VectorI16(x: 50, y: 50)
+
+  var player = constructPlayer(VectorI16(x: 50, y: 50), 0, 5)
+
   var server = newReactor("127.0.0.1", 5173)
   echo "Server booted! Listening for 📦 packets! 📦"
   while true:
@@ -41,19 +33,18 @@ proc main() =
       echo "[dead] ", connection.address
     for msg in server.messages:
       playerInput = msg.data[0].uint8
+
+    echo playerInput
+
+    player.update()
       # echo "[msg]", msg.data[0].uint8
 
-    if(inputUp()):    playerPos.y -= 4
-    if(inputDown()):  playerPos.y += 4
-    if(inputLeft()):  playerPos.x -= 4
-    if(inputRight()): playerPos.x += 4
-
-    echo "[Player's Position] ", playerPos
+    # echo "[Player's Position] ", playerPos
 
     # echo serializePos(playerPos)
-
+    # echo player.serialize()
     for connection in server.connections:
-      server.send(connection, serializePos(playerPos))
+      server.send(connection, player.serialize())
 
     timeFinish = cpuTime()
     delta = timeFinish - timeStart

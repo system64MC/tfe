@@ -1,17 +1,15 @@
 import Tilengine/tilengine
 import netty
 import flatty
-import utils/vectors
+import ../common/vectors
+import actors/player
 
 proc serializeInputs(): uint8 =
-
   var input = (
     getInput(Inputup).uint8 shl 3 or
     getInput(Inputdown).uint8 shl 2 or
     getInput(Inputleft).uint8 shl 1 or
     getInput(Inputright).uint8)
-
-
   return input
 
 
@@ -26,7 +24,9 @@ proc main() =
 
   var client = newReactor()
   var connection = client.connect("127.0.0.1", 5173)
-  var playerPos: VectorI16
+
+  var player = Player()
+
   var playerSprite = loadSpriteset("./assets/sprites/player.png")
   discard setSpriteSet(0, playerSprite)
   
@@ -43,9 +43,11 @@ proc main() =
 
     client.send(connection, $(input.chr))
     for msg in client.messages:
-      playerPos = unserializePos(msg.data)
+      player = unserialize(msg.data)
+
+
+    player.draw()
     # echo playerPos
-    discard setSpritePosition(0, playerPos.x.int, playerPos.y.int)
     drawFrame(0)
 
 main()
