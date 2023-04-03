@@ -17,7 +17,7 @@ proc constructPlayer*(position: VectorI16, character: uint8, lifes: uint8): Play
     player.lifes = lifes
     return player
 
-proc inputUp():    bool = return ((playerInput and 0b0000_1000) > 0)
+proc inputUp():    bool = return ((playerInput and 0b0000_1000) > 0) 
 proc inputDown():  bool = return ((playerInput and 0b0000_0100) > 0)
 proc inputLeft():  bool = return ((playerInput and 0b0000_0010) > 0)
 proc inputRight(): bool = return ((playerInput and 0b0000_0001) > 0)
