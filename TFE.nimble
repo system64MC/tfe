@@ -11,3 +11,4 @@ bin           = @["TFE"]
 # Dependencies
 
 requires "nim >= 1.6.4"
+requires "https://github.com/system64MC/nim-tilengine"

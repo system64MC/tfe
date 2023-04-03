@@ -8,7 +8,6 @@ if defined(win64):
   --outdir:"../../out/client"
   --threads:on 
   --d:nimDontSetUtf8CodePage
-  switch("passL", "-Llib/ -lTilengine")
   cpDir("lib", "../../out/client")
   mkdir("../../out/client/assets")
   cpDir("assets", "../../out/client/assets")

@@ -1,5 +1,6 @@
 # import ../utils/hitbox
 import ../../common/vectors
+import tilengine/tilengine
 
 type
     Actor* = ref object of RootObj

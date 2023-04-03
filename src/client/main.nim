@@ -1,4 +1,5 @@
-import Tilengine/tilengine
+# import Tilengine/tilengine
+import tilengine/tilengine
 import netty
 import flatty
 import ../common/vectors
@@ -19,35 +20,29 @@ proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
 proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16)
 
 proc main() =
-  var e = initEngine()
-  discard createWindow("e")
+  var e = init(384, 216, 3, 128, 64)
+  discard ("e")
 
   var client = newReactor()
   var connection = client.connect("127.0.0.1", 5173)
-
-  var player = Player()
+  
+  var player = player.Player()
 
   var playerSprite = loadSpriteset("./assets/sprites/player.png")
-  discard setSpriteSet(0, playerSprite)
+  let sprPlayer = Sprite(player.character)
+  sprPlayer.setSpriteSet(playerSprite)
+
+
+  createWindow()
   
-  echo playerSprite == nil
-
   while processWindow():
-    
     client.tick()
-    # for msg in client.messages:
-      # echo msg.data[0].uint8
-
     var input = serializeInputs()
-    # echo input
-
     client.send(connection, $(input.chr))
     for msg in client.messages:
       player = unserialize(msg.data)
 
-
     player.draw()
-    # echo playerPos
     drawFrame(0)
 
 main()
