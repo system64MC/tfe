@@ -4,7 +4,7 @@ import ../../common/vectors
 type
     Actor* = ref object of RootObj
         position*: VectorI16
-        # hitbox*: Hitbox
+        hitbox*: Hitbox
 
 method update*(actor: Actor): void {.base.} = 
     return

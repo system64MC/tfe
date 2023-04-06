@@ -4,6 +4,8 @@ import netty
 import flatty
 import ../common/vectors
 import actors/player
+import room/background
+import tilengine/bitmapUtils
 
 proc serializeInputs(): uint8 =
   var input = (
@@ -20,7 +22,8 @@ proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
 proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16)
 
 proc main() =
-  var e = init(384, 216, 3, 128, 64)
+  var e = init(256, 144, 2, 128, 64)
+  initBitmapLayer()
   discard ("e")
 
   var client = newReactor()
@@ -41,7 +44,7 @@ proc main() =
     client.send(connection, $(input.chr))
     for msg in client.messages:
       player = unserialize(msg.data)
-
+    bitmap.clearBitmap()
     player.draw()
     drawFrame(0)
 

@@ -1,4 +1,8 @@
 type
+  VectorU8* = object
+    x*: uint8
+    y*: uint8
+
   VectorI16* = object
     x*: int16
     y*: int16

@@ -1,5 +1,6 @@
 import actor
 import ../../common/vectors
+import ../utils/hitbox
 import flatty
 import netty
 
@@ -15,6 +16,7 @@ proc constructPlayer*(position: VectorI16, character: uint8, lifes: uint8): Play
     player.position = position
     player.character = character
     player.lifes = lifes
+    player.hitbox = Hitbox(size: VectorU8(x: 16, y: 32))
     return player
 
 proc inputUp():    bool = return ((playerInput and 0b0000_1000) > 0) 

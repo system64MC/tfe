@@ -1,11 +1,11 @@
-# import ../utils/hitbox
+import ../utils/hitbox
 import ../../common/vectors
 import tilengine/tilengine
 
 type
     Actor* = ref object of RootObj
         position*: VectorI16
-        # hitbox*: Hitbox
+        hitbox*: Hitbox
 
 method draw*(actor: Actor): void {.base.} = 
     return
