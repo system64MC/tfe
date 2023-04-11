@@ -3,6 +3,7 @@ import netty
 import flatty
 import ./actors/player
 import ../common/vectors
+import room/room
 
 var timeStart* = 0.0
 var timeFinish* = 0.0
@@ -20,6 +21,7 @@ proc main() =
   var player = constructPlayer(VectorI16(x: 50, y: 50), 0, 5)
 
   var server = newReactor("127.0.0.1", 5173)
+  room.loadedRoom = loadRoom("assets/tilemaps/testRoom.tmx")
   echo "Server booted! Listening for 📦 packets! 📦"
   while true:
     server.tick()
@@ -34,7 +36,6 @@ proc main() =
     for msg in server.messages:
       playerInput = msg.data[0].uint8
 
-    echo playerInput
 
     player.update()
       # echo "[msg]", msg.data[0].uint8

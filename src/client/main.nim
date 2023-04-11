@@ -35,6 +35,11 @@ proc main() =
   let sprPlayer = Sprite(player.character)
   sprPlayer.setSpriteSet(playerSprite)
 
+  let foreground = Layer(0)
+
+  var map = loadTilemap("assets/tilemaps/testRoom.tmx", "collisions")
+  foreground.setTilemap(map)
+
 
   createWindow()
   
