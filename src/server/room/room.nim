@@ -18,6 +18,7 @@ type
     NULL_TILE
     AIR
     SOLID
+    SWITCH_TILE
 
 var loadedRoom*: Room
 
