@@ -25,6 +25,7 @@ proc inputUp():    bool = return ((playerInput and 0b0000_1000) > 0)
 proc inputDown():  bool = return ((playerInput and 0b0000_0100) > 0)
 proc inputLeft():  bool = return ((playerInput and 0b0000_0010) > 0)
 proc inputRight(): bool = return ((playerInput and 0b0000_0001) > 0)
+proc inputFire():  bool = return ((playerInput and 0b0001_0000) > 0)
 
 proc getTile(pos: VectorI16): Tile =
     return room.loadedRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
@@ -45,15 +46,14 @@ method checkCollisions(player: Player): void =
     var hTests = @[player.position.y, (player.position.y + player.hitbox.size.y.int16) - 1, player.position.y + (player.hitbox.size.y shr 1).int16]
     var vTests = @[player.position.x, (player.position.x + player.hitbox.size.x.int16) - 1]
 
-
     for i in hTests:
 
         var tile:Tile
 
         if(player.velX >= 0):
-            tile = getTile(VectorI16(x: player.position.x + player.hitbox.size.x.int16 + player.velX, y: player.position.y))        
+            tile = getTile(VectorI16(x: player.position.x + player.hitbox.size.x.int16 + player.velX, y: i.int16))        
         else:
-            tile = getTile(VectorI16(x: player.position.x + player.velX, y: player.position.y))        
+            tile = getTile(VectorI16(x: player.position.x + player.velX, y: i))        
 
         case tile.index.Collision:
             of Collision.SOLID:
@@ -65,12 +65,36 @@ method checkCollisions(player: Player): void =
                     player.velX += ((16 - correct) and 15)
 
 
-                return    
+                continue
             else:
-                return
-    
-    
+                continue
 
+    for i in vTests:
+
+        var tile:Tile
+
+        if(player.velY >= 0):
+            tile = getTile(VectorI16(x: i, y: player.position.y + player.hitbox.size.y.int16 + player.velY))        
+        else:
+            tile = getTile(VectorI16(x: i, y: player.position.y + player.velY))        
+
+        case tile.index.Collision:
+            of Collision.SOLID:
+                if(player.velY >= 0):
+                    let correct = (player.position.y + player.hitbox.size.y.int16 + player.velY) and 0xF
+                    player.velY -= correct
+                elif(player.velY < 0):
+                    let correct = (player.position.y + player.velY) and 0xF
+                    player.velY += ((16 - correct) and 15)
+
+
+                continue    
+            else:
+                continue
+    
+    
+method fire*(player: Player): void {.base.} =
+    echo "FIRE!"
 
 method update*(player: Player): void =
     if(player.isNil): return
@@ -78,6 +102,7 @@ method update*(player: Player): void =
     if(inputDown()):  player.velY += 4
     if(inputLeft()):  player.velX -= 4
     if(inputRight()): player.velX += 4
+    if(inputFire()): player.fire()
     player.checkCollisions()
     player.position.x += player.velX
     player.position.y += player.velY

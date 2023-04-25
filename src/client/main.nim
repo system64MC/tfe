@@ -9,6 +9,8 @@ import tilengine/bitmapUtils
 
 proc serializeInputs(): uint8 =
   var input = (
+    getInput(InputButton1).uint8 shl 4 or
+
     getInput(Inputup).uint8 shl 3 or
     getInput(Inputdown).uint8 shl 2 or
     getInput(Inputleft).uint8 shl 1 or
