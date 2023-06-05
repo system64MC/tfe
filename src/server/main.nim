@@ -20,6 +20,14 @@ proc main() =
 
   var player = constructPlayer(VectorI16(x: 50, y: 50), 0, 5)
 
+  player.setPlayerCallback(
+    (
+      proc() =
+        echo "Delta : " & $delta
+    ),
+    0
+  )
+
   var server = newReactor("127.0.0.1", 5173)
   room.loadedRoom = loadRoom("assets/tilemaps/testRoom.tmx")
   echo "Server booted! Listening for 📦 packets! 📦"

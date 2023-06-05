@@ -9,9 +9,15 @@ import ../room/room
 var playerInput*: uint8 = 0b0000_0000 # Input of player.
 
 type
+    # This object is for serializing only! Do not use for gameplay!
+    PlayerSerialize = ref object of Actor
+        character*: uint8
+        lifes*: uint8
+
     Player* = ref object of Actor
         character*: uint8
         lifes*: uint8
+        callbacks: array[4, proc(): void]
 
 proc constructPlayer*(position: VectorI16, character: uint8, lifes: uint8): Player =
     var player = Player()
@@ -30,6 +36,9 @@ proc inputFire():  bool = return ((playerInput and 0b0001_0000) > 0)
 proc getTile(pos: VectorI16): Tile =
     return room.loadedRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
 
+method setPlayerCallback*(player: Player, callback: proc(): void, index: uint8): void {.base.} =
+    player.callbacks[index] = callback
+    return
 
 method checkCollisions(player: Player): void =
     #[
@@ -94,7 +103,9 @@ method checkCollisions(player: Player): void =
     
     
 method fire*(player: Player): void {.base.} =
-    echo "FIRE!"
+    echo "Fire"
+    player.callbacks[0]()
+    return
 
 method update*(player: Player): void =
     if(player.isNil): return
@@ -110,4 +121,12 @@ method update*(player: Player): void =
     player.velY = 0
     return
 
-method serialize*(player: Player): string = return toFlatty(player) 
+method serialize*(player: Player): string = 
+    var p = PlayerSerialize()
+    p.position = player.position
+    p.hitbox = player.hitbox
+    p.velX = player.velX
+    p.velY = player.velY
+    p.lifes = player.lifes
+    p.character = player.character
+    return toFlatty(p)
