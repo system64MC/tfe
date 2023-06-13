@@ -14,3 +14,7 @@ type
   VectorF32* = object
     x*: float32
     y*: float32
+
+  VectorF64* = object
+    x*: float64
+    y*: float64

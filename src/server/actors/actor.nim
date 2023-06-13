@@ -3,10 +3,10 @@ import ../../common/vectors
 
 type
     Actor* = ref object of RootObj
-        position*: VectorI16
+        position*: VectorF64
         hitbox*: Hitbox
-        velX*: int16
-        velY*:int16
+        velX*: float64
+        velY*: float64
     
     ActorType* = enum
         ENNEMY

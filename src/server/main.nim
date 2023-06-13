@@ -18,7 +18,7 @@ const DELAY* = (1000.0 / FPS.float)
 proc main() =
   # var playerPos = VectorI16(x: 50, y: 50)
 
-  var player = constructPlayer(VectorI16(x: 50, y: 50), 0, 5)
+  var player = constructPlayer(VectorF64(x: 50, y: 50), 0, 5)
 
   player.setPlayerCallback(
     (

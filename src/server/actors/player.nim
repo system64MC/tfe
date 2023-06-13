@@ -5,6 +5,7 @@ import flatty
 import netty
 import tilengine/tilengine
 import ../room/room
+import math
 
 var playerInput*: uint8 = 0b0000_0000 # Input of player.
 
@@ -19,7 +20,7 @@ type
         lifes*: uint8
         callbacks: array[4, proc(): void]
 
-proc constructPlayer*(position: VectorI16, character: uint8, lifes: uint8): Player =
+proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): Player =
     var player = Player()
     player.position = position
     player.character = character
@@ -33,7 +34,7 @@ proc inputLeft():  bool = return ((playerInput and 0b0000_0010) > 0)
 proc inputRight(): bool = return ((playerInput and 0b0000_0001) > 0)
 proc inputFire():  bool = return ((playerInput and 0b0001_0000) > 0)
 
-proc getTile(pos: VectorI16): Tile =
+proc getTile(pos: VectorF64): Tile =
     return room.loadedRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
 
 method setPlayerCallback*(player: Player, callback: proc(): void, index: uint8): void {.base.} =
@@ -52,26 +53,26 @@ method checkCollisions(player: Player): void =
                 if tile == destructible: correct
     ]#
 
-    var hTests = @[player.position.y, (player.position.y + player.hitbox.size.y.int16) - 1, player.position.y + (player.hitbox.size.y shr 1).int16]
-    var vTests = @[player.position.x, (player.position.x + player.hitbox.size.x.int16) - 1]
+    var hTests = @[player.position.y, (player.position.y + player.hitbox.size.y.float64) - 1, player.position.y + (player.hitbox.size.y shr 1).float64]
+    var vTests = @[player.position.x, (player.position.x + player.hitbox.size.x.float64) - 1]
 
     for i in hTests:
 
         var tile:Tile
 
         if(player.velX >= 0):
-            tile = getTile(VectorI16(x: player.position.x + player.hitbox.size.x.int16 + player.velX, y: i.int16))        
+            tile = getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX, y: i))        
         else:
-            tile = getTile(VectorI16(x: player.position.x + player.velX, y: i))        
+            tile = getTile(VectorF64(x: player.position.x + player.velX, y: i))        
 
         case tile.index.Collision:
             of Collision.SOLID:
                 if(player.velX >= 0):
-                    let correct = (player.position.x + player.hitbox.size.x.int16 + player.velX) and 0xF
+                    let correct = (player.position.x + player.hitbox.size.x.float64 + player.velX) mod 16.0
                     player.velX -= correct
                 elif(player.velX < 0):
-                    let correct = (player.position.x + player.velX) and 0xF
-                    player.velX += ((16 - correct) and 15)
+                    let correct = (player.position.x + player.velX) mod 16.0
+                    player.velX += ((16 - correct) mod 16.0)
 
 
                 continue
@@ -83,18 +84,18 @@ method checkCollisions(player: Player): void =
         var tile:Tile
 
         if(player.velY >= 0):
-            tile = getTile(VectorI16(x: i, y: player.position.y + player.hitbox.size.y.int16 + player.velY))        
+            tile = getTile(VectorF64(x: i, y: player.position.y + player.hitbox.size.y.float64 + player.velY))        
         else:
-            tile = getTile(VectorI16(x: i, y: player.position.y + player.velY))        
+            tile = getTile(VectorF64(x: i, y: player.position.y + player.velY))        
 
         case tile.index.Collision:
             of Collision.SOLID:
                 if(player.velY >= 0):
-                    let correct = (player.position.y + player.hitbox.size.y.int16 + player.velY) and 0xF
+                    let correct = (player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0
                     player.velY -= correct
                 elif(player.velY < 0):
-                    let correct = (player.position.y + player.velY) and 0xF
-                    player.velY += ((16 - correct) and 15)
+                    let correct = (player.position.y + player.velY) mod 16.0
+                    player.velY += ((16 - correct) mod 16.0)
 
 
                 continue    
