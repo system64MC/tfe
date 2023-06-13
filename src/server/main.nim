@@ -4,6 +4,8 @@ import flatty
 import ./actors/player
 import ../common/vectors
 import room/room
+import gameInstance
+import std/threadpool
 
 var timeStart* = 0.0
 var timeFinish* = 0.0
@@ -60,4 +62,12 @@ proc main() =
     if(delta < DELAY):
         sleep((DELAY - delta).int)
 
-main()
+proc main2(): void =
+  spawn bootGameInstance()
+
+  while true:
+    continue
+  # var th: Thread[void]
+  # createThread(th, bootGameInstance, 1)
+
+main2()
