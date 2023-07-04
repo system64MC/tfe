@@ -27,7 +27,7 @@ proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
 
 proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16)
 
-var bulletList*:seq[Bullet]
+var bulletList*:seq[Bullet] = newSeq[bullet.Bullet](512)
 
 proc main() =
   var e = init(256, 144, 3, 128, 64)
@@ -55,7 +55,6 @@ proc main() =
     client.tick()
     var input = serializeInputs()
     client.send(connection, $(input.chr))
-    echo client.messages.len
     for msg in client.messages:
       let myMsg = fromFlatty(msg.data, message.Message)
       # if(msg.)
@@ -63,17 +62,22 @@ proc main() =
       of MessageHeader.PLAYER_DATA:
         player = unserialize(myMsg.data)
       of MessageHeader.BULLET_LIST:
-        var myArr = fromFlatty(myMsg.data, seq[string])
-        for i in 0..<1:
-          echo hexPrint(myArr[i])
-          # echo ()
-          if(myArr[i] == $((1).char)): continue
-          bulletList[i] = fromFlatty(myArr[i], Bullet)
+        bulletList = fromFlatty(myMsg.data, seq[Bullet])
+        # for i in 0..<1:
+        #   # echo ()
+        #   if(myArr[i] == $((1).char)): continue
+        #   echo hexPrint(myArr[i])
+        #   bulletList[i] = fromFlatty(myArr[i], bullet.Bullet)
+      else:
+        continue
         # continue
     # bulletList = fromFlatty(client.messages[0].data, array[512, Bullet])
     # player = unserialize(client.messages[1].data)
     bitmap.clearBitmap()
     player.draw()
+    for b in bulletList:
+      if(b == nil): continue
+      b.draw()
     drawFrame(0)
 
 main()
