@@ -63,11 +63,12 @@ proc main() =
         sleep((DELAY - delta).int)
 
 proc main2(): void =
-  spawn bootGameInstance()
+  # spawn bootGameInstance()
 
+  var th: Thread[void]
+  createThread(th, bootGameInstance)
   while true:
     continue
-  # var th: Thread[void]
-  # createThread(th, bootGameInstance, 1)
+  
 
 main2()

@@ -2,8 +2,12 @@
 import tilengine/tilengine
 import netty
 import flatty
+import flatty/hexprint
+
 import ../common/vectors
+import ../common/message
 import actors/player
+import actors/bullet
 import room/background
 import tilengine/bitmapUtils
 
@@ -23,8 +27,10 @@ proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
 
 proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16)
 
+var bulletList*:seq[Bullet]
+
 proc main() =
-  var e = init(256, 144, 2, 128, 64)
+  var e = init(256, 144, 3, 128, 64)
   initBitmapLayer()
   discard ("e")
 
@@ -49,8 +55,23 @@ proc main() =
     client.tick()
     var input = serializeInputs()
     client.send(connection, $(input.chr))
+    echo client.messages.len
     for msg in client.messages:
-      player = unserialize(msg.data)
+      let myMsg = fromFlatty(msg.data, message.Message)
+      # if(msg.)
+      case myMsg.header:
+      of MessageHeader.PLAYER_DATA:
+        player = unserialize(myMsg.data)
+      of MessageHeader.BULLET_LIST:
+        var myArr = fromFlatty(myMsg.data, seq[string])
+        for i in 0..<1:
+          echo hexPrint(myArr[i])
+          # echo ()
+          if(myArr[i] == $((1).char)): continue
+          bulletList[i] = fromFlatty(myArr[i], Bullet)
+        # continue
+    # bulletList = fromFlatty(client.messages[0].data, array[512, Bullet])
+    # player = unserialize(client.messages[1].data)
     bitmap.clearBitmap()
     player.draw()
     drawFrame(0)

@@ -1,7 +1,7 @@
 import tilengine/tilengine
 import ../../common/vectors
 
-const MAX_BGS = 2
+const MAX_BGS = 3
 
 type
     Background* = ref object of RootObj
@@ -23,7 +23,7 @@ proc createBackground*(path: string, scrollMullts: VectorF32 = VectorF32(x: 0, y
 
 
 var bitmap*:Bitmap
-var bitmapLayer* = Layer(0)
+var bitmapLayer* = Layer(2)
 
 proc initBitmapLayer*(): void =
     bitmap = createBitmap(256, 144, 8)

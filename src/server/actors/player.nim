@@ -1,5 +1,6 @@
 import actor
 import ../../common/vectors
+import ../../common/message
 import ../utils/hitbox
 import flatty
 import netty
@@ -133,4 +134,4 @@ method serialize*(player: Player): string =
     p.velY = player.velY
     p.lifes = player.lifes
     p.character = player.character
-    return toFlatty(p)
+    return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))
