@@ -6,6 +6,7 @@ import flatty/hexprint
 
 import ../common/vectors
 import ../common/message
+import ../common/constants
 import actors/player
 import actors/bullet
 import room/background
@@ -30,7 +31,7 @@ proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16
 var bulletList*:seq[Bullet] = newSeq[bullet.Bullet](512)
 
 proc main() =
-  var e = init(256, 144, 3, 128, 64)
+  var e = init(SCREEN_X, SCREEN_Y, 3, 128, 64)
   initBitmapLayer()
   discard ("e")
 
