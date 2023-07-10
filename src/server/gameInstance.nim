@@ -9,6 +9,7 @@ import netty
 import flatty
 import std/threadpool
 import tilengine/tilengine
+import math
 
 type
   GameInstance* = ref object
@@ -20,12 +21,13 @@ type
     timeFinish*: float64
     delta*: float64
     server*: Reactor
+    frame*: int
     loadedRoom*: Room
 
 
-var timeStart* = 0.0
-var timeFinish* = 0.0
-var delta* = 0.0
+# var timeStart* = 0.0
+# var timeFinish* = 0.0
+# var delta* = 0.0
 
 const FPS* = 60.0
 const DELAY* = (1000.0 / FPS.float)
@@ -73,7 +75,7 @@ proc init*(game: GameInstance): void =
         game.addBullet(position = VectorF64(
           x: player.position.x + player.hitbox.size.x.float64,
           y: player.position.y + player.hitbox.size.y.float64 / 2),
-          direction = VectorF64(x: 0, y: 8))
+          direction = VectorF64(x: sin(game.frame.float64)*4.0, y: 8))
         # echo "Position : " & $player.position.x
     ),
     0
@@ -109,5 +111,6 @@ proc bootGameInstance*() {.thread.} =
 
     game.timeFinish = cpuTime()
     game.delta = game.timeFinish - game.timeStart
+    game.frame.inc
     if(game.delta < DELAY):
         sleep((DELAY - game.delta).int)
