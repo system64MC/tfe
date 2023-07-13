@@ -28,7 +28,7 @@ proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
 
 proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16)
 
-var bulletList*:seq[Bullet] = newSeq[bullet.Bullet](512)
+var bulletList*: array[512, Bullet]
 
 proc main() =
   var e = init(SCREEN_X, SCREEN_Y, 3, 128, 64)
@@ -63,7 +63,10 @@ proc main() =
       of MessageHeader.PLAYER_DATA:
         player = unserialize(myMsg.data)
       of MessageHeader.BULLET_LIST:
-        bulletList = fromFlatty(myMsg.data, seq[Bullet])
+        bulletList = fromFlatty(myMsg.data, array[512, Bullet])
+      of MessageHeader.BULLET_NULL:
+        let i = fromFlatty(myMsg.data, uint16)
+        bulletList[i] = nil
         # for i in 0..<1:
         #   # echo ()
         #   if(myArr[i] == $((1).char)): continue

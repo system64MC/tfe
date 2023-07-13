@@ -1,9 +1,9 @@
 import ../camera
-import ../actors/actor
-import ../actors/ennemy
+# import ../actors/actor
+# import ../actors/ennemy
 import ../../common/vectors
-import ../actors/player
-import ../actors/bullet
+# import ../actors/player
+# import ../actors/bullet
 import tilengine/tilengine
 
 type
@@ -11,8 +11,8 @@ type
     camera*: Camera
     collisions*: Tilemap
     # playerList*: array[4, player.Player]
-    actorList*: seq[Actor]
-    bulletList*: seq[Bullet]
+    # actorList*: seq[Actor]
+    # bulletList*: seq[Bullet]
 
   Collision* = enum
     NULL_TILE
@@ -40,14 +40,17 @@ proc loadRoom*(path: string): Room =
     #             )
     return room
 
+proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
+    return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
+
 method update(room: Room): void =
     room.camera.update()
 
     # for p in room.playerList:
     #     p.update()
     
-    for a in room.actorList:
-        a.update()
+    # for a in room.actorList:
+    #     a.update()
 
-    for b in room.actorList:
-        b.update()
+    # for b in room.actorList:
+    #     b.update()

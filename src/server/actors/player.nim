@@ -7,7 +7,6 @@ import netty
 import tilengine/tilengine
 import ../room/room
 import math
-from ../room/room import Room
 
 var playerInput*: uint8 = 0b0000_0000 # Input of player.
 
@@ -38,8 +37,7 @@ proc inputLeft(player: Player):  bool = return ((player.input and 0b0000_0010) >
 proc inputRight(player: Player): bool = return ((player.input and 0b0000_0001) > 0)
 proc inputFire(player: Player):  bool = return ((player.input and 0b0001_0000) > 0)
 
-proc getTile(pos: VectorF64, currentRoom: Room): Tile =
-    return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
+
 
 method setPlayerCallback*(player: Player, callback: proc(): void {.gcsafe.}, index: uint8): void {.base, gcsafe.} =
     player.callbacks[index] = callback
