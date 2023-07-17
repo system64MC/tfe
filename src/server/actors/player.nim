@@ -36,6 +36,8 @@ proc inputDown(player: Player):  bool = return ((player.input and 0b0000_0100) >
 proc inputLeft(player: Player):  bool = return ((player.input and 0b0000_0010) > 0)
 proc inputRight(player: Player): bool = return ((player.input and 0b0000_0001) > 0)
 proc inputFire(player: Player):  bool = return ((player.input and 0b0001_0000) > 0)
+proc inputA(player: Player):     bool = return ((player.input and 0b0010_0000) > 0)
+proc inputB(player: Player):     bool = return ((player.input and 0b0100_0000) > 0)
 
 
 
@@ -44,6 +46,7 @@ method setPlayerCallback*(player: Player, callback: proc(): void {.gcsafe.}, ind
     return
 
 method checkCollisions(player: Player): void =
+    let camX = player.currentRoom.camera.position.x
     #[
         Algorithm :
             for each points of the player :
@@ -56,24 +59,24 @@ method checkCollisions(player: Player): void =
     ]#
 
     var hTests = @[player.position.y, (player.position.y + player.hitbox.size.y.float64) - 1, player.position.y + (player.hitbox.size.y shr 1).float64]
-    var vTests = @[player.position.x, (player.position.x + player.hitbox.size.x.float64) - 1]
+    var vTests = @[player.position.x + camX, (player.position.x + player.hitbox.size.x.float64 + camX) - 1]
 
     for i in hTests:
 
         var tile:Tile
 
         if(player.velX >= 0):
-            tile = getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX, y: i), player.currentRoom)        
+            tile = getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: i), player.currentRoom)        
         else:
-            tile = getTile(VectorF64(x: player.position.x + player.velX, y: i), player.currentRoom)        
+            tile = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), player.currentRoom)        
 
         case tile.index.Collision:
             of Collision.SOLID:
                 if(player.velX >= 0):
-                    let correct = (player.position.x + player.hitbox.size.x.float64 + player.velX) mod 16.0
+                    let correct = (player.position.x + player.hitbox.size.x.float64 + player.velX + camX) mod 16.0
                     player.velX -= correct
                 elif(player.velX < 0):
-                    let correct = (player.position.x + player.velX) mod 16.0
+                    let correct = (player.position.x + player.velX + camX) mod 16.0
                     player.velX += ((16 - correct) mod 16.0)
 
 
@@ -117,6 +120,10 @@ method update*(player: Player): void =
     if(player.inputLeft()):  player.velX -= 4
     if(player.inputRight()): player.velX += 4
     if(player.inputFire()): player.fire()
+
+    # DODO : Remove this
+    if(player.inputA()): player.currentRoom.camera.position.x -= 1.0
+    if(player.inputB()): player.currentRoom.camera.position.x += 1.0
     player.checkCollisions()
     player.position.x += player.velX
     player.position.y += player.velY

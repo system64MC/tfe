@@ -4,6 +4,7 @@ import ./actors/bullet
 import ../common/vectors
 import ../common/message
 import ../common/constants
+import camera
 import room/room
 import netty
 import flatty
@@ -61,9 +62,11 @@ proc serialize*(game: GameInstance): void =
           continue
         bulletListSerialize[i] = game.bulletList[i].toSerializeObject()
     let bList = toFlatty(message.Message(header: MessageHeader.BULLET_LIST, data: toFlatty(bulletListSerialize)))
+    let camData = game.loadedRoom.camera.serialize()
 
     # Sending data to the server.
     for connection in game.server.connections:
+      game.server.send(connection, camData)
       game.server.send(connection, bList)
       game.server.send(connection, game.playerList[0].serialize())
 

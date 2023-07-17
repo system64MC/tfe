@@ -25,6 +25,7 @@ var loadedRoom*: Room
 proc loadRoom*(path: string): Room =
     var room = Room()
     room.collisions = loadTilemap(path, "collisions")
+    room.camera = Camera(position: VectorF64(x: 0, y: 0))
     
     # let actorMap = tiledMap.tiledMap.layers[2]
 

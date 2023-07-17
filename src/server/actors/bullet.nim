@@ -23,7 +23,8 @@ type
 
 proc checkCollisions(bullet: Bullet): bool =
     var tile:Tile
-    tile = getTile(VectorF64(x: bullet.position.x, y: bullet.position.y), bullet.currentRoom)
+    let camX = bullet.currentRoom.camera.position.x
+    tile = getTile(VectorF64(x: bullet.position.x + camX, y: bullet.position.y), bullet.currentRoom)
     case tile.index.Collision:
         of Collision.SOLID:
             return true

@@ -10,10 +10,13 @@ import ../common/constants
 import actors/player
 import actors/bullet
 import room/background
+import camera
 import tilengine/bitmapUtils
 
 proc serializeInputs(): uint8 =
   var input = (
+    getInput(InputButton3).uint8 shl 6 or
+    getInput(InputButton2).uint8 shl 5 or
     getInput(InputButton1).uint8 shl 4 or
 
     getInput(Inputup).uint8 shl 3 or
@@ -30,7 +33,10 @@ proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16
 
 var bulletList*: array[512, Bullet]
 
+var cam = Camera(position: VectorF64(x: 0, y: 0))
+
 proc main() =
+  cam = Camera()
   var e = init(SCREEN_X, SCREEN_Y, 3, 128, 64)
   initBitmapLayer()
   discard ("e")
@@ -67,6 +73,8 @@ proc main() =
       of MessageHeader.BULLET_NULL:
         let i = fromFlatty(myMsg.data, uint16)
         bulletList[i] = nil
+      of MessageHeader.CAMERA_DATA:
+        cam = fromFlatty(myMsg.data, Camera)
         # for i in 0..<1:
         #   # echo ()
         #   if(myArr[i] == $((1).char)): continue
@@ -78,6 +86,7 @@ proc main() =
     # bulletList = fromFlatty(client.messages[0].data, array[512, Bullet])
     # player = unserialize(client.messages[1].data)
     bitmap.clearBitmap()
+    foreground.setPosition(cam.position.x.int, cam.position.y.int)
     player.draw()
     for b in bulletList:
       if(b == nil): continue
