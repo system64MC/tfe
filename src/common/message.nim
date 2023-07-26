@@ -4,7 +4,8 @@ type
         BULLET_LIST,
         BULLET_NULL,
         BULLET_DATA,
-        CAMERA_DATA
+        CAMERA_DATA,
+        EVENT_DESTROY_TILE
 
     Message* = object
         header*: MessageHeader

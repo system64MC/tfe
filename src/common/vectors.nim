@@ -7,6 +7,10 @@ type
     x*: int16
     y*: int16
 
+  VectorI64* = object
+    x*: int
+    y*: int
+
   VectorU16* = object
     x*: uint16
     y*: uint16

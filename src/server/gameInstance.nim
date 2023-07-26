@@ -18,6 +18,7 @@ type
     actorList*: array[512, int] # TODO : Replace int by Actor
     # bulletList*:array[512, Bullet] # TODO : Replace int by Bullet
     bulletList*:array[512, Bullet]
+    eventList*: seq[message.Message]
     timeStart*: float64
     timeFinish*: float64
     delta*: float64
@@ -35,6 +36,7 @@ const DELAY* = (1000.0 / FPS.float)
 
 
 proc update*(game: GameInstance): void {.gcsafe.} =
+    game.eventList.setLen(0)
     for msg in game.server.messages:
       game.playerList[0].input = msg.data[0].uint8
 
@@ -70,14 +72,33 @@ proc serialize*(game: GameInstance): void =
       game.server.send(connection, bList)
       game.server.send(connection, game.playerList[0].serialize())
 
+    # Sending events to the server.
+    for e in game.eventList:
+      let data = e.toFlatty()
+      for connection in game.server.connections:
+        game.server.send(connection, data)
+
 proc addBullet*(game: GameInstance, isPlayer: bool = true, bType: int = 0, direction: VectorF64 = VectorF64(x: 0, y: 1), position: VectorF64): void =
   for i in 0..<512:
     if(game.bulletList[i] != nil): continue
-    game.bulletList[i] = Bullet(isPlayer: isPlayer, bulletType: bType, vector: direction, position: position, bulletId: i.uint16, currentRoom: game.loadedRoom)
+    game.bulletList[i] = Bullet(
+      isPlayer: isPlayer, 
+      bulletType: bType, 
+      vector: direction, 
+      position: position, 
+      bulletId: i.uint16, 
+      currentRoom: game.loadedRoom,
+      eventCallback:
+      (
+        proc(message: message.Message) =
+          game.eventList.add(message)
+      )
+      )
     break
   
 
 proc init*(game: GameInstance): void =
+  game.eventList = newSeq[message.Message](0)
   var player = constructPlayer(VectorF64(x: 50, y: 50), 0, 5)
 
   # Setting callback 0, so the player can shoot bullets. That is done like this, because Nim does not support cyclic imports, like Python.

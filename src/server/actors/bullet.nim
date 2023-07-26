@@ -6,7 +6,6 @@ import ../../common/message
 import ../utils/hitbox
 import tilengine/tilengine
 import flatty
-import netty
 
 type
     BulletSerialize* = ref object of Actor
@@ -20,6 +19,7 @@ type
         bulletId*: uint16
         vector*: VectorF64
         currentRoom*: Room
+        eventCallback*: proc(message: message.Message): void {.gcsafe.}
 
 proc checkCollisions(bullet: Bullet): bool =
     var tile:Tile
@@ -27,6 +27,14 @@ proc checkCollisions(bullet: Bullet): bool =
     tile = getTile(VectorF64(x: bullet.position.x + camX, y: bullet.position.y), bullet.currentRoom)
     case tile.index.Collision:
         of Collision.SOLID:
+            return true
+        of Collision.DESTROYABLE_TILE:
+            tile.index = 0
+            let x = bullet.position.x.int shr 4 
+            let y = bullet.position.y.int shr 4
+            bullet.currentRoom.collisions.setTile(x, y, tile)
+            let pos = VectorI64(x: x, y: y)
+            let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(pos))
             return true
         else:
             return false
