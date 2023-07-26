@@ -28,7 +28,7 @@ proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): Play
     player.position = position
     player.character = character
     player.lifes = lifes
-    player.hitbox = Hitbox(size: VectorU8(x: 16, y: 32))
+    player.hitbox = Hitbox(size: VectorU8(x: 15, y: 31))
     return player
 
 proc inputUp(player: Player):    bool = return ((player.input and 0b0000_1000) > 0) 
@@ -45,8 +45,95 @@ method setPlayerCallback*(player: Player, callback: proc(): void {.gcsafe.}, ind
     player.callbacks[index] = callback
     return
 
+method checkCollisionsNew(player: Player): void =
+    let camX = player.currentRoom.camera.position.x
+    let camV = player.currentRoom.camera.velocity.x
+
+    let map = player.currentRoom
+    let wallTiles: array[6, Tile] = [
+        # Left side
+        getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y), map),
+        getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
+        getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64), map),
+        
+        # Right side
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64), map),
+    ]
+
+    # let ceilingTiles: array[4, Tile] = [
+
+    # ]
+
+    # Walls
+    for i in 0..<6:
+        case wallTiles[i].index.Collision:
+
+            of Collision.SOLID:
+                let correct = (player.position.x + player.velX + camX) mod 16.0
+                if i < 3:
+                # Left side
+                    player.velX += 16 - correct
+                    break
+                # Right side
+                player.velX -= correct
+            else:
+                continue
+
+    # # Right side
+    # for i in 3..<6:
+    #     case wallTiles[i].index.Collision:
+
+    #         of Collision.SOLID:
+    #             let correct = (player.position.x + player.velX + camX) mod 16.0
+    #             player.velX -= correct
+    #             break
+    #         else:
+    #             continue
+
+    let ceilingTiles: array[4, Tile] = [
+        # Top side
+        getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.velY), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.velY), map),
+
+        # Bottom side
+        getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 + player.velY), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 + player.velY), map),
+    ]
+    
+    # Ceilings
+    for i in 0..<4:
+        case ceilingTiles[i].index.Collision:
+
+            of Collision.SOLID:
+                let correct = (player.position.y + player.velY) mod 16.0
+                if i < 2:
+                    # Top side
+                    player.velY += 16 - correct
+                    break
+                # Bottom side
+                player.velY -= correct
+                break
+            else:
+                continue
+
+    # # Bottom side
+    # for i in 2..<4:
+    #     case ceilingTiles[i].index.Collision:
+
+    #         of Collision.SOLID:
+    #             let correct = (player.position.y + player.velY) mod 16.0
+    #             player.velY -= correct
+    #             break
+    #         else:
+    #             continue
+
+    # player.position.y += player.velY
+
 method checkCollisions(player: Player): void =
     let camX = player.currentRoom.camera.position.x
+    let camV = player.currentRoom.camera.velocity.x
     #[
         Algorithm :
             for each points of the player :
@@ -58,54 +145,77 @@ method checkCollisions(player: Player): void =
                 if tile == destructible: correct
     ]#
 
+    # Getting test points for walls
     var hTests = @[player.position.y, (player.position.y + player.hitbox.size.y.float64) - 1, player.position.y + (player.hitbox.size.y shr 1).float64]
-    var vTests = @[player.position.x + camX, (player.position.x + player.hitbox.size.x.float64 + camX) - 1]
+    
+    # Getting test points for ceilings
+    var vTests = @[player.position.x, (player.position.x + player.hitbox.size.x.float64) - 1]
 
+    # Testing for walls
     for i in hTests:
 
         var tile:Tile
+        var tileLeft:Tile
 
+        # Getting the tile to test against
         if(player.velX >= 0):
             tile = getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: i), player.currentRoom)        
         else:
-            tile = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), player.currentRoom)        
+            tile = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), player.currentRoom)
 
+        # Doing the according action depending of the tile type
         case tile.index.Collision:
+            # Here we do a correction
             of Collision.SOLID:
                 if(player.velX >= 0):
-                    let correct = (player.position.x + player.hitbox.size.x.float64 + player.velX + camX) mod 16.0
+                    let correct = (player.position.x + player.hitbox.size.x.float64 + player.velX + camX - camV) mod 16.0
                     player.velX -= correct
                 elif(player.velX < 0):
-                    let correct = (player.position.x + player.velX + camX) mod 16.0
+                    let correct = (player.position.x + player.velX + camX - camV) mod 16.0
                     player.velX += ((16 - correct) mod 16.0)
-
-
-                continue
+            # If the tile is unknown, we do nothing and we test the next point.
             else:
-                continue
+                player.velX = player.velX
 
+        if(player.velX == 0):
+            tileLeft = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), player.currentRoom)
+            case tileLeft.index.Collision:
+            # Here we do a correction
+            of Collision.SOLID:
+                let correct = (player.position.x + player.velX + camX - camV) mod 16.0
+                player.velX += ((16 - correct) mod 16.0)
+            # If the tile is unknown, we do nothing and we test the next point.
+            else:
+                player.velX = player.velX
+
+    player.position.x += player.velX
+
+    # Testing for ceilings
     for i in vTests:
 
         var tile:Tile
 
+        # Getting the tile to test against
         if(player.velY >= 0):
-            tile = getTile(VectorF64(x: i, y: player.position.y + player.hitbox.size.y.float64 + player.velY), player.currentRoom)        
+            tile = getTile(VectorF64(x: i + camX + camV, y: player.position.y + player.hitbox.size.y.float64 + player.velY), player.currentRoom)        
         else:
-            tile = getTile(VectorF64(x: i, y: player.position.y + player.velY), player.currentRoom)        
+            tile = getTile(VectorF64(x: i + camX + camV, y: player.position.y + player.velY), player.currentRoom)        
 
+        # Doing the according action depending of the tile type
         case tile.index.Collision:
+            # Here we do a correction
             of Collision.SOLID:
                 if(player.velY >= 0):
                     let correct = (player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0
                     player.velY -= correct
-                elif(player.velY < 0):
+                elif(player.velY <= 0):
                     let correct = (player.position.y + player.velY) mod 16.0
                     player.velY += ((16 - correct) mod 16.0)
-
-
-                continue    
+            # If the tile is unknown, we do nothing and we test the next point.
             else:
-                continue
+                player.velY = player.velY
+
+    player.position.y += player.velY
     
     
 method fire*(player: Player): void {.base, gcsafe.} =
@@ -122,11 +232,13 @@ method update*(player: Player): void =
     if(player.inputFire()): player.fire()
 
     # DODO : Remove this
-    if(player.inputA()): player.currentRoom.camera.position.x -= 1.0
-    if(player.inputB()): player.currentRoom.camera.position.x += 1.0
-    player.checkCollisions()
+    if(player.inputA()): player.currentRoom.camera.velocity.x = -1.0
+    if(player.inputB()): player.currentRoom.camera.velocity.x =  1.0
+    player.currentRoom.camera.position.x += player.currentRoom.camera.velocity.x
+    player.checkCollisionsNew()
     player.position.x += player.velX
     player.position.y += player.velY
+    player.currentRoom.camera.velocity.x = 0
     player.velX = 0
     player.velY = 0
     return

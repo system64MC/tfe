@@ -55,8 +55,8 @@ proc main() =
   var map = loadTilemap("assets/tilemaps/testRoom.tmx", "collisions")
   foreground.setTilemap(map)
 
-
-  createWindow()
+  setTargetFps(60)
+  createWindow(flags = {cwfNoVsync})
   
   while processWindow():
     client.tick()

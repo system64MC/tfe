@@ -21,7 +21,7 @@ proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): Play
 
 method draw*(player: Player): void =
     bitmap.drawRectWH(player.position.x.int, player.position.y.int, player.hitbox.size.x.int, 1, 0, 0, 1)
-    bitmap.drawRectWH(player.position.x.int, player.position.y.int + player.hitbox.size.y.int - 1, player.hitbox.size.x.int, 1, 0, 0, 1)
+    bitmap.drawRectWH(player.position.x.int, player.position.y.int + player.hitbox.size.y.int, player.hitbox.size.x.int + 1, 1, 0, 0, 1)
     bitmap.drawRectWH(player.position.x.int, player.position.y.int, 1, player.hitbox.size.y.int, 0, 0, 1)
     bitmap.drawRectWH(player.position.x.int + player.hitbox.size.x.int, player.position.y.int, 1, player.hitbox.size.y.int, 0, 0, 1)
     Sprite(player.character).setPosition(player.position.x.int32, player.position.y.int32)
