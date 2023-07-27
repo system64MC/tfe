@@ -3,6 +3,7 @@ import ../../common/vectors
 import math
 import ../room/room
 import ../../common/message
+import ../../common/events
 import ../utils/hitbox
 import tilengine/tilengine
 import flatty
@@ -29,12 +30,14 @@ proc checkCollisions(bullet: Bullet): bool =
         of Collision.SOLID:
             return true
         of Collision.DESTROYABLE_TILE:
-            tile.index = 0
+            tile.index = AIR.uint16
             let x = bullet.position.x.int shr 4 
             let y = bullet.position.y.int shr 4
-            bullet.currentRoom.collisions.setTile(x, y, tile)
+            bullet.currentRoom.collisions.setTile(y, x, tile)
             let pos = VectorI64(x: x, y: y)
-            let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(pos))
+            let tileChangeEvent = EventTileChange(coordinates: pos, tileType: AIR.uint16)
+            let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(tileChangeEvent))
+            bullet.eventCallback(m)
             return true
         else:
             return false

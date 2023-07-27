@@ -18,8 +18,8 @@ type
     NULL_TILE
     AIR
     SOLID
-    SWITCH_TILE
     DESTROYABLE_TILE
+    SWITCH_TILE
 
 var loadedRoom*: Room
 

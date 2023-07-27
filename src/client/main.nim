@@ -6,6 +6,7 @@ import flatty/hexprint
 
 import ../common/vectors
 import ../common/message
+import ../common/events
 import ../common/constants
 import actors/player
 import actors/bullet
@@ -34,6 +35,9 @@ proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16
 var bulletList*: array[512, Bullet]
 
 var cam = Camera(position: VectorF64(x: 0, y: 0))
+
+# proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
+#     return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
 
 proc main() =
   cam = Camera()
@@ -75,6 +79,11 @@ proc main() =
         bulletList[i] = nil
       of MessageHeader.CAMERA_DATA:
         cam = fromFlatty(myMsg.data, Camera)
+      of MessageHeader.EVENT_DESTROY_TILE:
+        let e = fromFlatty(myMsg.data, EventTileChange)
+        var tile = map.getTile(e.coordinates.y, e.coordinates.x)
+        tile.index = e.tileType
+        map.setTile(e.coordinates.y, e.coordinates.x, tile)
         # for i in 0..<1:
         #   # echo ()
         #   if(myArr[i] == $((1).char)): continue

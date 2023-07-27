@@ -50,6 +50,9 @@ method checkCollisionsNew(player: Player): void =
     let camV = player.currentRoom.camera.velocity.x
 
     let map = player.currentRoom
+
+    # We get all Wall tiles at the start, so this way, we can get all informations about the environment
+    # This can be useful to check if the player got crushed by 2 walls or other use cases
     let wallTiles: array[6, Tile] = [
         # Left side
         getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y), map),
@@ -61,10 +64,6 @@ method checkCollisionsNew(player: Player): void =
         getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
         getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64), map),
     ]
-
-    # let ceilingTiles: array[4, Tile] = [
-
-    # ]
 
     # Walls
     for i in 0..<6:
@@ -78,20 +77,20 @@ method checkCollisionsNew(player: Player): void =
                     break
                 # Right side
                 player.velX -= correct
+
+            of Collision.DESTROYABLE_TILE:
+                let correct = (player.position.x + player.velX + camX) mod 16.0
+                if i < 3:
+                # Left side
+                    player.velX += 16 - correct
+                    break
+                # Right side
+                player.velX -= correct
             else:
                 continue
 
-    # # Right side
-    # for i in 3..<6:
-    #     case wallTiles[i].index.Collision:
-
-    #         of Collision.SOLID:
-    #             let correct = (player.position.x + player.velX + camX) mod 16.0
-    #             player.velX -= correct
-    #             break
-    #         else:
-    #             continue
-
+    # We get all Ceiling and Floor tiles at the start, so this way, we can get all informations about the environment
+    # This can be useful to check if the player got crushed by 2 ceilings or other use cases
     let ceilingTiles: array[4, Tile] = [
         # Top side
         getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.velY), map),
@@ -101,7 +100,7 @@ method checkCollisionsNew(player: Player): void =
         getTile(VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 + player.velY), map),
         getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 + player.velY), map),
     ]
-    
+
     # Ceilings
     for i in 0..<4:
         case ceilingTiles[i].index.Collision:
@@ -115,21 +114,18 @@ method checkCollisionsNew(player: Player): void =
                 # Bottom side
                 player.velY -= correct
                 break
+
+            of Collision.DESTROYABLE_TILE:
+                let correct = (player.position.y + player.velY) mod 16.0
+                if i < 2:
+                    # Top side
+                    player.velY += 16 - correct
+                    break
+                # Bottom side
+                player.velY -= correct
+                break
             else:
                 continue
-
-    # # Bottom side
-    # for i in 2..<4:
-    #     case ceilingTiles[i].index.Collision:
-
-    #         of Collision.SOLID:
-    #             let correct = (player.position.y + player.velY) mod 16.0
-    #             player.velY -= correct
-    #             break
-    #         else:
-    #             continue
-
-    # player.position.y += player.velY
 
 method checkCollisions(player: Player): void =
     let camX = player.currentRoom.camera.position.x
