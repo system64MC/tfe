@@ -77,6 +77,7 @@ method checkCollisionsNew(player: Player): void =
                     break
                 # Right side
                 player.velX -= correct
+                break
 
             of Collision.DESTROYABLE_TILE:
                 let correct = (player.position.x + player.velX + camX) mod 16.0
@@ -86,6 +87,38 @@ method checkCollisionsNew(player: Player): void =
                     break
                 # Right side
                 player.velX -= correct
+                break
+            of Collision.SWITCH_TILE:
+                let correct = (player.position.x + player.velX + camX) mod 16.0
+                if i < 3:
+                # Left side
+                    player.velX += 16 - correct
+                    break
+                # Right side
+                player.velX -= correct
+                break
+            of Collision.TILE_SWITCH_ON:
+                # If the Switch is not ON, the ON tiles are not solid
+                if(not player.currentRoom.switchOn): continue
+                let correct = (player.position.x + player.velX + camX) mod 16.0
+                if i < 3:
+                # Left side
+                    player.velX += 16 - correct
+                    break
+                # Right side
+                player.velX -= correct
+                break
+            of Collision.TILE_SWITCH_OFF:
+                # If the Switch is ON, the OFF tiles are not solid
+                if(player.currentRoom.switchOn): continue
+                let correct = (player.position.x + player.velX + camX) mod 16.0
+                if i < 3:
+                # Left side
+                    player.velX += 16 - correct
+                    break
+                # Right side
+                player.velX -= correct
+                break
             else:
                 continue
 
@@ -116,6 +149,35 @@ method checkCollisionsNew(player: Player): void =
                 break
 
             of Collision.DESTROYABLE_TILE:
+                let correct = (player.position.y + player.velY) mod 16.0
+                if i < 2:
+                    # Top side
+                    player.velY += 16 - correct
+                    break
+                # Bottom side
+                player.velY -= correct
+                break
+            of Collision.SWITCH_TILE:
+                let correct = (player.position.y + player.velY) mod 16.0
+                if i < 2:
+                    # Top side
+                    player.velY += 16 - correct
+                    break
+                # Bottom side
+                player.velY -= correct
+                break
+            of Collision.TILE_SWITCH_ON:
+                if(not player.currentRoom.switchOn): continue
+                let correct = (player.position.y + player.velY) mod 16.0
+                if i < 2:
+                    # Top side
+                    player.velY += 16 - correct
+                    break
+                # Bottom side
+                player.velY -= correct
+                break
+            of Collision.TILE_SWITCH_OFF:
+                if(player.currentRoom.switchOn): continue
                 let correct = (player.position.y + player.velY) mod 16.0
                 if i < 2:
                     # Top side

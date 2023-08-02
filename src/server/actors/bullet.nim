@@ -39,6 +39,15 @@ proc checkCollisions(bullet: Bullet): bool =
             let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(tileChangeEvent))
             bullet.eventCallback(m)
             return true
+        of Collision.SWITCH_TILE:
+            bullet.currentRoom.switchOn = not bullet.currentRoom.switchOn
+            return true
+        of Collision.TILE_SWITCH_ON:
+            if(not bullet.currentRoom.switchOn): return false
+            return true
+        of Collision.TILE_SWITCH_OFF:
+            if(bullet.currentRoom.switchOn): return false
+            return true
         else:
             return false
 

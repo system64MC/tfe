@@ -10,6 +10,7 @@ type
   Room* = ref object
     camera*: Camera
     collisions*: Tilemap
+    switchOn*: bool
     # playerList*: array[4, player.Player]
     # actorList*: seq[Actor]
     # bulletList*: seq[Bullet]
@@ -20,6 +21,8 @@ type
     SOLID
     DESTROYABLE_TILE
     SWITCH_TILE
+    TILE_SWITCH_ON
+    TILE_SWITCH_OFF
 
 var loadedRoom*: Room
 
