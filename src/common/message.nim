@@ -6,6 +6,7 @@ type
         BULLET_DATA,
         CAMERA_DATA,
         EVENT_DESTROY_TILE
+        EVENT_SWITCH
 
     Message* = object
         header*: MessageHeader

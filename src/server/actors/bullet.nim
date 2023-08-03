@@ -41,6 +41,9 @@ proc checkCollisions(bullet: Bullet): bool =
             return true
         of Collision.SWITCH_TILE:
             bullet.currentRoom.switchOn = not bullet.currentRoom.switchOn
+            let switchEvent = EventSwitch(state: bullet.currentRoom.switchOn)
+            let m = Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
+            bullet.eventCallback(m)
             return true
         of Collision.TILE_SWITCH_ON:
             if(not bullet.currentRoom.switchOn): return false

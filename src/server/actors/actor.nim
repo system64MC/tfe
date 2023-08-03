@@ -7,6 +7,7 @@ type
         hitbox*: Hitbox
         velX*: float64
         velY*: float64
+        # timers*: array[8, uint16]
     
     ActorType* = enum
         ENNEMY

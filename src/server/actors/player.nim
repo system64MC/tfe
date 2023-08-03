@@ -22,6 +22,7 @@ type
         input*: uint8
         callbacks: array[4, proc(): void {.gcsafe.}]
         currentRoom*: Room
+        timers*: array[8, uint16]
 
 proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): Player =
     var player = Player()
@@ -277,11 +278,15 @@ method checkCollisions(player: Player): void =
     
     
 method fire*(player: Player): void {.base, gcsafe.} =
-    echo "Fire"
-    player.callbacks[0]()
+    if(player.timers[0] == 0):
+        player.callbacks[0]()
+        player.timers[0] = 5
     return
 
 method update*(player: Player): void =
+    for i in 0..<player.timers.len:
+        if(player.timers[i] > 0):
+            player.timers[i].dec
     if(player.isNil): return
     if(player.inputUp()):    player.velY -= 4
     if(player.inputDown()):  player.velY += 4
