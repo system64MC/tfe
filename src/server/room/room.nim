@@ -1,9 +1,5 @@
 import ../camera
-# import ../actors/actor
-# import ../actors/ennemy
 import ../../common/vectors
-# import ../actors/player
-# import ../actors/bullet
 import tilengine/tilengine
 
 type
@@ -11,9 +7,6 @@ type
     camera*: Camera
     collisions*: Tilemap
     switchOn*: bool
-    # playerList*: array[4, player.Player]
-    # actorList*: seq[Actor]
-    # bulletList*: seq[Bullet]
 
   Collision* = enum
     NULL_TILE

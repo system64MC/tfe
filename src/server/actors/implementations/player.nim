@@ -1,56 +1,51 @@
-import actor
-import ../../common/vectors
-import ../../common/message
-import ../utils/hitbox
+import ../actors
+import ../../../common/vectors
+import ../../../common/message
+import ../../utils/hitbox
 import flatty
-import netty
 import tilengine/tilengine
-import ../room/room
+import ../../room/room
+import ../../gameInfos
 import math
+
+# Thoses methods has to be declared here to avoid a compiler error that says invalid declaration order.
+# They won't be used anyways, since actor is the root object.
+method update*(actor: Actor, infos: var GameInfos): void {.base.} = 
+    return
+method serialize*(actor: Actor): string {.base.} =
+    return ""
 
 var playerInput*: uint8 = 0b0000_0000 # Input of player.
 
 type
-    # This object is for serializing only! Do not use for gameplay!
+    # WARNING : This object is for serializing only! Do not use for gameplay!
     PlayerSerialize = ref object of Actor
         character*: uint8
         lifes*: uint8
 
-    Player* = ref object of Actor
-        character*: uint8
-        lifes*: uint8
-        input*: uint8
-        callbacks: array[4, proc(): void {.gcsafe.}]
-        currentRoom*: Room
-        timers*: array[8, uint16]
-
-proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): Player =
-    var player = Player()
+proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): actors.Player =
+    var player = actors.Player()
     player.position = position
     player.character = character
     player.lifes = lifes
     player.hitbox = Hitbox(size: VectorU8(x: 15, y: 31))
     return player
 
-proc inputUp(player: Player):    bool = return ((player.input and 0b0000_1000) > 0) 
-proc inputDown(player: Player):  bool = return ((player.input and 0b0000_0100) > 0)
-proc inputLeft(player: Player):  bool = return ((player.input and 0b0000_0010) > 0)
-proc inputRight(player: Player): bool = return ((player.input and 0b0000_0001) > 0)
-proc inputFire(player: Player):  bool = return ((player.input and 0b0001_0000) > 0)
-proc inputA(player: Player):     bool = return ((player.input and 0b0010_0000) > 0)
-proc inputB(player: Player):     bool = return ((player.input and 0b0100_0000) > 0)
+proc inputUp(player: actors.Player):    bool = return ((player.input and 0b0000_1000) > 0) 
+proc inputDown(player: actors.Player):  bool = return ((player.input and 0b0000_0100) > 0)
+proc inputLeft(player: actors.Player):  bool = return ((player.input and 0b0000_0010) > 0)
+proc inputRight(player: actors.Player): bool = return ((player.input and 0b0000_0001) > 0)
+proc inputFire(player: actors.Player):  bool = return ((player.input and 0b0001_0000) > 0)
+proc inputA(player: actors.Player):     bool = return ((player.input and 0b0010_0000) > 0)
+proc inputB(player: actors.Player):     bool = return ((player.input and 0b0100_0000) > 0)
 
+method checkCollisions(player: actors.Player, loadedRoom: Room): void =
+    if(loadedRoom == nil): return
 
+    let camX = loadedRoom.camera.position.x
+    let camV = loadedRoom.camera.velocity.x
 
-method setPlayerCallback*(player: Player, callback: proc(): void {.gcsafe.}, index: uint8): void {.base, gcsafe.} =
-    player.callbacks[index] = callback
-    return
-
-method checkCollisionsNew(player: Player): void =
-    let camX = player.currentRoom.camera.position.x
-    let camV = player.currentRoom.camera.velocity.x
-
-    let map = player.currentRoom
+    let map = loadedRoom
 
     # We get all Wall tiles at the start, so this way, we can get all informations about the environment
     # This can be useful to check if the player got crushed by 2 walls or other use cases
@@ -100,7 +95,7 @@ method checkCollisionsNew(player: Player): void =
                 break
             of Collision.TILE_SWITCH_ON:
                 # If the Switch is not ON, the ON tiles are not solid
-                if(not player.currentRoom.switchOn): continue
+                if(not loadedRoom.switchOn): continue
                 let correct = (player.position.x + player.velX + camX) mod 16.0
                 if i < 3:
                 # Left side
@@ -111,7 +106,7 @@ method checkCollisionsNew(player: Player): void =
                 break
             of Collision.TILE_SWITCH_OFF:
                 # If the Switch is ON, the OFF tiles are not solid
-                if(player.currentRoom.switchOn): continue
+                if(loadedRoom.switchOn): continue
                 let correct = (player.position.x + player.velX + camX) mod 16.0
                 if i < 3:
                 # Left side
@@ -168,7 +163,7 @@ method checkCollisionsNew(player: Player): void =
                 player.velY -= correct
                 break
             of Collision.TILE_SWITCH_ON:
-                if(not player.currentRoom.switchOn): continue
+                if(not loadedRoom.switchOn): continue
                 let correct = (player.position.y + player.velY) mod 16.0
                 if i < 2:
                     # Top side
@@ -178,7 +173,7 @@ method checkCollisionsNew(player: Player): void =
                 player.velY -= correct
                 break
             of Collision.TILE_SWITCH_OFF:
-                if(player.currentRoom.switchOn): continue
+                if(loadedRoom.switchOn): continue
                 let correct = (player.position.y + player.velY) mod 16.0
                 if i < 2:
                     # Top side
@@ -190,9 +185,10 @@ method checkCollisionsNew(player: Player): void =
             else:
                 continue
 
-method checkCollisions(player: Player): void =
-    let camX = player.currentRoom.camera.position.x
-    let camV = player.currentRoom.camera.velocity.x
+# Do not use. This is the old collisions engine. Keeping as archive for now.
+method checkCollisionsOld(player: actors.Player, loadedRoom: Room): void =
+    let camX = loadedRoom.camera.position.x
+    let camV = loadedRoom.camera.velocity.x
     #[
         Algorithm :
             for each points of the player :
@@ -218,9 +214,9 @@ method checkCollisions(player: Player): void =
 
         # Getting the tile to test against
         if(player.velX >= 0):
-            tile = getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: i), player.currentRoom)        
+            tile = getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: i), loadedRoom)        
         else:
-            tile = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), player.currentRoom)
+            tile = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), loadedRoom)
 
         # Doing the according action depending of the tile type
         case tile.index.Collision:
@@ -237,7 +233,7 @@ method checkCollisions(player: Player): void =
                 player.velX = player.velX
 
         if(player.velX == 0):
-            tileLeft = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), player.currentRoom)
+            tileLeft = getTile(VectorF64(x: player.position.x + player.velX + camX, y: i), loadedRoom)
             case tileLeft.index.Collision:
             # Here we do a correction
             of Collision.SOLID:
@@ -256,9 +252,9 @@ method checkCollisions(player: Player): void =
 
         # Getting the tile to test against
         if(player.velY >= 0):
-            tile = getTile(VectorF64(x: i + camX + camV, y: player.position.y + player.hitbox.size.y.float64 + player.velY), player.currentRoom)        
+            tile = getTile(VectorF64(x: i + camX + camV, y: player.position.y + player.hitbox.size.y.float64 + player.velY), loadedRoom)        
         else:
-            tile = getTile(VectorF64(x: i + camX + camV, y: player.position.y + player.velY), player.currentRoom)        
+            tile = getTile(VectorF64(x: i + camX + camV, y: player.position.y + player.velY), loadedRoom)        
 
         # Doing the according action depending of the tile type
         case tile.index.Collision:
@@ -276,14 +272,50 @@ method checkCollisions(player: Player): void =
 
     player.position.y += player.velY
     
-    
-method fire*(player: Player): void {.base, gcsafe.} =
-    if(player.timers[0] == 0):
-        player.callbacks[0]()
-        player.timers[0] = 5
-    return
 
-method update*(player: Player): void =
+# proc addBullet*(game: GameInstance, isPlayer: bool = true, bType: int = 0, direction: VectorF64 = VectorF64(x: 0, y: 1), position: VectorF64): void =
+#   for i in 0..<512:
+#     if(game.infos.bulletList[i] != nil): continue
+#     game.infos.bulletList[i] = Bullet(
+#       isPlayer: isPlayer, 
+#       bulletType: bType, 
+#       vector: direction, 
+#       position: position, 
+#       bulletId: i.uint16, 
+#       currentRoom: game.infos.loadedRoom,
+#       eventCallback:
+#       (
+#         proc(message: message.Message) =
+#           game.infos.eventList.add(message)
+#       )
+#       )
+#     break
+
+method fire*(player: actors.Player, bulletList: var array[512, Bullet]): void {.base, gcsafe.} =
+
+    if(player.timers[0] > 0): return
+    for i in 0..<512:
+        if(bulletList[i] != nil): continue
+        bulletList[i] = Bullet(
+        isPlayer: true, 
+        bulletType: 0, 
+        vector: VectorF64(x: 0, y: 4),
+        position: VectorF64(
+            x: player.position.x + player.hitbox.size.x.float64,
+            y: player.position.y + player.hitbox.size.y.float64 / 2
+        ),
+        bulletId: i.uint16, 
+        currentRoom: nil,
+        )
+        player.timers[0] = 5
+        return
+
+    # if(player.timers[0] == 0):
+    #     player.callbacks[0]()
+    #     player.timers[0] = 5
+    # return
+
+method update*(player: actors.Player, infos: var GameInfos): void =
     for i in 0..<player.timers.len:
         if(player.timers[i] > 0):
             player.timers[i].dec
@@ -292,21 +324,22 @@ method update*(player: Player): void =
     if(player.inputDown()):  player.velY += 4
     if(player.inputLeft()):  player.velX -= 4
     if(player.inputRight()): player.velX += 4
-    if(player.inputFire()): player.fire()
+    if(player.inputFire()): player.fire(infos.bulletList)
 
-    # DODO : Remove this
-    if(player.inputA()): player.currentRoom.camera.velocity.x = -1.0
-    if(player.inputB()): player.currentRoom.camera.velocity.x =  1.0
-    player.currentRoom.camera.position.x += player.currentRoom.camera.velocity.x
-    player.checkCollisionsNew()
+    # TODO : Remove this
+    if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0
+    if(player.inputB()): infos.loadedRoom.camera.velocity.x =  1.0
+    infos.loadedRoom.camera.position.x += infos.loadedRoom.camera.velocity.x
+
+    player.checkCollisions(infos.loadedRoom)
     player.position.x += player.velX
     player.position.y += player.velY
-    player.currentRoom.camera.velocity.x = 0
+    infos.loadedRoom.camera.velocity.x = 0
     player.velX = 0
     player.velY = 0
     return
 
-method serialize*(player: Player): string = 
+method serialize*(player: actors.Player): string = 
     var p = PlayerSerialize()
     p.position = player.position
     p.hitbox = player.hitbox

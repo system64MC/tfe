@@ -1,12 +1,15 @@
 import actor
-import ../../common/vectors
+import ../../../common/vectors
 import math
-import ../room/room
-import ../../common/message
-import ../../common/events
-import ../utils/hitbox
+import ../../room/room
+import ../../../common/message
+import ../../../common/events
+import ../../utils/hitbox
+import ../../gameInfos
 import tilengine/tilengine
 import flatty
+from ../actors import Bullet
+from ../actors import Actor
 
 type
     BulletSerialize* = ref object of Actor
@@ -14,18 +17,18 @@ type
         isPlayer*: bool
         bulletId*: uint16
 
-    Bullet* = ref object of Actor
-        bulletType*: int
-        isPlayer*: bool
-        bulletId*: uint16
-        vector*: VectorF64
-        currentRoom*: Room
-        eventCallback*: proc(message: message.Message): void {.gcsafe.}
+    # Bullet* = ref object of Actor
+    #     bulletType*: int
+    #     isPlayer*: bool
+    #     bulletId*: uint16
+    #     vector*: VectorF64
+    #     currentRoom*: Room
+    #     eventCallback*: proc(message: message.Message): void {.gcsafe.}
 
-proc checkCollisions(bullet: Bullet): bool =
+proc checkCollisions(bullet: Bullet, infos: var GameInfos): bool =
     var tile:Tile
-    let camX = bullet.currentRoom.camera.position.x
-    tile = getTile(VectorF64(x: bullet.position.x + camX, y: bullet.position.y), bullet.currentRoom)
+    let camX = infos.loadedRoom.camera.position.x
+    tile = getTile(VectorF64(x: bullet.position.x + camX, y: bullet.position.y), infos.loadedRoom)
     case tile.index.Collision:
         of Collision.SOLID:
             return true
@@ -33,30 +36,29 @@ proc checkCollisions(bullet: Bullet): bool =
             tile.index = AIR.uint16
             let x = bullet.position.x.int shr 4 
             let y = bullet.position.y.int shr 4
-            bullet.currentRoom.collisions.setTile(y, x, tile)
+            infos.loadedRoom.collisions.setTile(y, x, tile)
             let pos = VectorI64(x: x, y: y)
             let tileChangeEvent = EventTileChange(coordinates: pos, tileType: AIR.uint16)
             let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(tileChangeEvent))
-            bullet.eventCallback(m)
-            return true
+            infos.eventList.add(m)
         of Collision.SWITCH_TILE:
-            bullet.currentRoom.switchOn = not bullet.currentRoom.switchOn
-            let switchEvent = EventSwitch(state: bullet.currentRoom.switchOn)
+            infos.loadedRoom.switchOn = not infos.loadedRoom.switchOn
+            let switchEvent = EventSwitch(state: infos.loadedRoom.switchOn)
             let m = Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
-            bullet.eventCallback(m)
+            infos.eventList.add(m)
             return true
         of Collision.TILE_SWITCH_ON:
-            if(not bullet.currentRoom.switchOn): return false
+            if(not infos.loadedRoom.switchOn): return false
             return true
         of Collision.TILE_SWITCH_OFF:
-            if(bullet.currentRoom.switchOn): return false
+            if(infos.loadedRoom.switchOn): return false
             return true
         else:
             return false
 
-method update*(bullet: Bullet): void = 
+method update*(bullet: Bullet, infos: var GameInfos): void = 
     # Getting X component
-    if(bullet.checkCollisions):
+    if(bullet.checkCollisions(infos)):
         bullet.bulletType = -1
         return
     let xSpeed = bullet.vector.y * cos(bullet.vector.x)
