@@ -13,8 +13,10 @@ import actors/bullet
 import room/background
 import camera
 import tilengine/bitmapUtils
+import std/monotimes
+import std/times
 
-proc serializeInputs(): uint8 =
+proc serializeInputs(): string =
   var input = (
     getInput(InputButton3).uint8 shl 6 or
     getInput(InputButton2).uint8 shl 5 or
@@ -24,7 +26,7 @@ proc serializeInputs(): uint8 =
     getInput(Inputdown).uint8 shl 2 or
     getInput(Inputleft).uint8 shl 1 or
     getInput(Inputright).uint8)
-  return input
+  return toFlatty(EventInput(input: input, sentAt: getTime().toUnixFloat()))
 
 
 
@@ -89,7 +91,7 @@ proc main() =
   while processWindow():
     client.tick()
     var input = serializeInputs()
-    client.send(connection, $(input.chr))
+    client.send(connection, toFlatty(message.Message(header: EVENT_INPUT, data: input)))
 
     for msg in client.messages:
       let myMsg = fromFlatty(msg.data, message.Message)

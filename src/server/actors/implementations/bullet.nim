@@ -34,7 +34,7 @@ proc checkCollisions(bullet: Bullet, infos: var GameInfos): bool =
             return true
         of Collision.DESTROYABLE_TILE:
             tile.index = AIR.uint16
-            let x = bullet.position.x.int shr 4 
+            let x = (bullet.position.x + camX).int shr 4 
             let y = bullet.position.y.int shr 4
             infos.loadedRoom.collisions.setTile(y, x, tile)
             let pos = VectorI64(x: x, y: y)

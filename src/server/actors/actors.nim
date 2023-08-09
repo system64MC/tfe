@@ -17,6 +17,7 @@ type
         input*: uint8
         currentRoom*: Room
         timers*: array[8, uint16]
+        deltaTime*: float
 
     Bullet* = ref object of Actor
         bulletType*: int

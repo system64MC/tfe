@@ -7,6 +7,7 @@ import tilengine/tilengine
 import ../../room/room
 import ../../gameInfos
 import math
+import ../../../common/constants
 
 # Thoses methods has to be declared here to avoid a compiler error that says invalid declaration order.
 # They won't be used anyways, since actor is the root object.
@@ -292,7 +293,6 @@ method checkCollisionsOld(player: actors.Player, loadedRoom: Room): void =
 #     break
 
 method fire*(player: actors.Player, bulletList: var array[512, Bullet]): void {.base, gcsafe.} =
-
     if(player.timers[0] > 0): return
     for i in 0..<512:
         if(bulletList[i] != nil): continue
@@ -310,33 +310,29 @@ method fire*(player: actors.Player, bulletList: var array[512, Bullet]): void {.
         player.timers[0] = 5
         return
 
-    # if(player.timers[0] == 0):
-    #     player.callbacks[0]()
-    #     player.timers[0] = 5
-    # return
-
 method update*(player: actors.Player, infos: var GameInfos): void =
     for i in 0..<player.timers.len:
         if(player.timers[i] > 0):
             player.timers[i].dec
     if(player.isNil): return
-    if(player.inputUp()):    player.velY -= 4
-    if(player.inputDown()):  player.velY += 4
-    if(player.inputLeft()):  player.velX -= 4
-    if(player.inputRight()): player.velX += 4
+    if(player.inputUp()):    player.velY -= 2 * player.deltaTime * TPS
+    if(player.inputDown()):  player.velY += 2 * player.deltaTime * TPS
+    if(player.inputLeft()):  player.velX -= 2 * player.deltaTime * TPS
+    if(player.inputRight()): player.velX += 2 * player.deltaTime * TPS
     if(player.inputFire()): player.fire(infos.bulletList)
 
     # TODO : Remove this
     if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0
     if(player.inputB()): infos.loadedRoom.camera.velocity.x =  1.0
     infos.loadedRoom.camera.position.x += infos.loadedRoom.camera.velocity.x
-
     player.checkCollisions(infos.loadedRoom)
+
     player.position.x += player.velX
     player.position.y += player.velY
     infos.loadedRoom.camera.velocity.x = 0
     player.velX = 0
     player.velY = 0
+    player.input = 0
     return
 
 method serialize*(player: actors.Player): string = 

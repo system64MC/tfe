@@ -3,6 +3,7 @@ import ./actors/implementations/player
 import ./actors/implementations/bullet
 import ../common/vectors
 import ../common/message
+import ../common/events
 import ../common/constants
 import camera
 import room/room
@@ -13,6 +14,7 @@ import tilengine/tilengine
 import math
 import gameInfos
 import ./actors/actors
+import std/monotimes
 
 type
   GameInstance* = ref object
@@ -22,14 +24,23 @@ type
 # var timeFinish* = 0.0
 # var delta* = 0.0
 
-const FPS* = 60.0
-const DELAY* = (1000.0 / FPS.float)
+
 
 
 proc update*(game: GameInstance): void {.gcsafe.} =
     game.infos.eventList.setLen(0)
     for msg in game.server.messages:
-      game.infos.playerList[0].input = msg.data[0].uint8
+      let data = fromFlatty(msg.data, message.Message)
+      if(data.header == MessageHeader.EVENT_INPUT):
+        let e = fromFlatty(data.data, events.EventInput)
+        game.infos.playerList[0].input = e.input
+        # let duration = (getMonoTime() - e.sentAt)
+        let t = getTime().toUnixFloat()
+        let duration = (t - e.sentAt)
+        # let dt = if(duration.inNanoseconds.float * (1.0/1_000_000_000.0)) < MINIMAL_LATENCY: MINIMAL_LATENCY else: duration.inNanoseconds.float * (1.0/1_000_000_000.0)
+        let dt = if(duration) < MINIMAL_LATENCY: MINIMAL_LATENCY else: duration
+        game.infos.playerList[0].deltaTime = dt
+        # echo game.infos.playerList[0].deltaTime
 
     game.infos.playerList[0].update(game.infos)
     
@@ -119,5 +130,5 @@ proc bootGameInstance*() {.thread.} =
     game.infos.timeFinish = cpuTime()
     game.infos.delta = game.infos.timeFinish - game.infos.timeStart
     game.infos.frame.inc
-    if(game.infos.delta < DELAY):
-        sleep((DELAY - game.infos.delta).int)
+    if(game.infos.delta < TPS_DELAY):
+        sleep((TPS_DELAY - game.infos.delta).int)

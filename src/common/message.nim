@@ -7,6 +7,7 @@ type
         CAMERA_DATA,
         EVENT_DESTROY_TILE
         EVENT_SWITCH
+        EVENT_INPUT
 
     Message* = object
         header*: MessageHeader

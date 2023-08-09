@@ -39,8 +39,10 @@ proc loadRoom*(path: string): Room =
     #             )
     return room
 
+import math
 proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
-    return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
+    # return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
+    return currentRoom.collisions.getTile((pos.y / 16).int, (pos.x / 16).int)
 
 method update(room: Room): void =
     room.camera.update()
