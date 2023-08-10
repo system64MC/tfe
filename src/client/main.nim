@@ -14,7 +14,7 @@ import room/background
 import camera
 import tilengine/bitmapUtils
 import std/monotimes
-import std/times
+import std/[times, os]
 
 proc serializeInputs(): string =
   var input = (
@@ -83,7 +83,7 @@ proc main() =
   var map = loadTilemap("assets/tilemaps/testRoom.tmx", "background")
   foreground.setTilemap(map)
 
-  setTargetFps(60)
+  setTargetFps(120)
   var sp = map.getTileset.getSequencePack()
   
   createWindow(flags = {cwfNoVsync})
@@ -134,5 +134,6 @@ proc main() =
       if(b == nil): continue
       b.draw()
     drawFrame(0)
-
+    # sleep(100)
+  client.disconnect(connection)
 main()

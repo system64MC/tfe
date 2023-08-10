@@ -7,3 +7,4 @@ const
     FPS_DELAY* = (1000.0 / FPS.float)
     TPS_DELAY* = (1000.0 / TPS.float)
     MINIMAL_LATENCY* = (1.0 / TPS.float)
+    MAX_LATENCY* = (1.0 / (TPS.float / 5))

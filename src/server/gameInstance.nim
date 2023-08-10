@@ -33,15 +33,18 @@ proc update*(game: GameInstance): void {.gcsafe.} =
       let data = fromFlatty(msg.data, message.Message)
       if(data.header == MessageHeader.EVENT_INPUT):
         let e = fromFlatty(data.data, events.EventInput)
-        game.infos.playerList[0].input = e.input
-        # let duration = (getMonoTime() - e.sentAt)
+        game.infos.playerList[0].input = game.infos.playerList[0].input or e.input
         let t = getTime().toUnixFloat()
         let duration = (t - e.sentAt)
-        # let dt = if(duration.inNanoseconds.float * (1.0/1_000_000_000.0)) < MINIMAL_LATENCY: MINIMAL_LATENCY else: duration.inNanoseconds.float * (1.0/1_000_000_000.0)
-        let dt = if(duration) < MINIMAL_LATENCY: MINIMAL_LATENCY else: duration
-        game.infos.playerList[0].deltaTime = dt
-        # echo game.infos.playerList[0].deltaTime
-
+        # echo(duration * TPS)
+        game.infos.playerList[0].deltaTimeAccumulator += duration
+        game.infos.playerList[0].deltaTimeHowManyValues.inc
+    if(game.infos.playerList[0].deltaTimeHowManyValues >= 64):
+      let avg = game.infos.playerList[0].deltaTimeAccumulator / game.infos.playerList[0].deltaTimeHowManyValues.float
+      # echo avg * TPS
+      game.infos.playerList[0].deltaTime = clamp(avg, MINIMAL_LATENCY, MAX_LATENCY)
+      game.infos.playerList[0].deltaTimeAccumulator = 0
+      game.infos.playerList[0].deltaTimeHowManyValues = 0
     game.infos.playerList[0].update(game.infos)
     
     for i in 0..<game.infos.bulletList.len:

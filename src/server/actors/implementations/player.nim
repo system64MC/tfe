@@ -311,10 +311,10 @@ method fire*(player: actors.Player, bulletList: var array[512, Bullet]): void {.
         return
 
 method update*(player: actors.Player, infos: var GameInfos): void =
+    if(player.isNil): return
     for i in 0..<player.timers.len:
         if(player.timers[i] > 0):
             player.timers[i].dec
-    if(player.isNil): return
     if(player.inputUp()):    player.velY -= 2 * player.deltaTime * TPS
     if(player.inputDown()):  player.velY += 2 * player.deltaTime * TPS
     if(player.inputLeft()):  player.velX -= 2 * player.deltaTime * TPS

@@ -2,6 +2,7 @@ import ../utils/hitbox
 import ../../common/vectors
 import ../room/room
 import ../../common/message
+import ../../common/constants
 
 type
     Actor* = ref object of RootObj
@@ -17,7 +18,9 @@ type
         input*: uint8
         currentRoom*: Room
         timers*: array[8, uint16]
-        deltaTime*: float
+        deltaTimeHowManyValues*: int = 0
+        deltaTimeAccumulator*: float64 = 0
+        deltaTime*: float64 = 0
 
     Bullet* = ref object of Actor
         bulletType*: int
