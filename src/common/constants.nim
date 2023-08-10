@@ -1,6 +1,9 @@
 const    
     SCREEN_X* = 256
     SCREEN_Y* = 144
+
+    # ROOM_CHUNK_WIDTH* = (SCREEN_X / 16) + 4
+    # ROOM_CHUNK_HEIGHT* = SCREEN_X / 16
     
     FPS* = 60.0
     TPS* = 60.0

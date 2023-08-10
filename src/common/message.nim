@@ -5,8 +5,9 @@ type
         BULLET_NULL,
         BULLET_DATA,
         CAMERA_DATA,
-        EVENT_DESTROY_TILE
-        EVENT_SWITCH
+        DESTROYABLE_TILES_DATA,
+        EVENT_DESTROY_TILE,
+        EVENT_SWITCH,
         EVENT_INPUT
 
     Message* = object

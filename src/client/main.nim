@@ -14,7 +14,7 @@ import room/background
 import camera
 import tilengine/bitmapUtils
 import std/monotimes
-import std/[times, os]
+import std/[times, os, tables]
 
 proc serializeInputs(): string =
   var input = (
@@ -115,6 +115,14 @@ proc main() =
         needSwitching = true
         let e = fromFlatty(myMsg.data, events.EventSwitch)
         switchState = e.state
+      of MessageHeader.DESTROYABLE_TILES_DATA:
+        echo "Received data!"
+        let list = fromFlatty(myMsg.data, Table[VectorI64, bool])
+        for coordinates, isHere in list:
+          if(not isHere):
+            var tile = map.getTile(coordinates.y, coordinates.x)
+            tile.index = 1
+            map.setTile(coordinates.y, coordinates.x, tile)
         # for i in 0..<1:
         #   # echo ()
         #   if(myArr[i] == $((1).char)): continue

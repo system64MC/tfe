@@ -1,12 +1,21 @@
 import ../camera
 import ../../common/vectors
+import ../../common/constants
 import tilengine/tilengine
+import std/tables
 
 type
+  DestroyableTilesInfos* = object
+    x*: int
+    y*: int
+    isDestroyed*: bool
+
   Room* = ref object
     camera*: Camera
     collisions*: Tilemap
     switchOn*: bool
+    # destroyableTilesList*: seq[DestroyableTilesInfos]
+    destroyableTilesList*: Table[VectorI64, bool]
 
   Collision* = enum
     NULL_TILE
@@ -19,11 +28,22 @@ type
 
 var loadedRoom*: Room
 
+proc getDestroyableTiles(room: var Room): void =
+    var buffer = initTable[VectorI64, bool]()
+    var tile = Tile()
+    for row in 0..<room.collisions.getRows():
+        for col in 0..<room.collisions.getCols():
+            tile = room.collisions.getTile(row, col)
+            if tile.index.Collision == DESTROYABLE_TILE:
+                buffer[VectorI64(x: col.int, y: row.int)] = true
+    room.destroyableTilesList = buffer
+
 proc loadRoom*(path: string): Room =
     var room = Room()
     room.collisions = loadTilemap(path, "collisions")
     room.camera = Camera(position: VectorF64(x: 0, y: 0))
     room.switchOn = true
+    room.getDestroyableTiles()
     
     # let actorMap = tiledMap.tiledMap.layers[2]
 

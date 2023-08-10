@@ -10,6 +10,7 @@ import tilengine/tilengine
 import flatty
 from ../actors import Bullet
 from ../actors import Actor
+import std/tables
 
 type
     BulletSerialize* = ref object of Actor
@@ -37,10 +38,12 @@ proc checkCollisions(bullet: Bullet, infos: var GameInfos): bool =
             let x = (bullet.position.x + camX).int shr 4 
             let y = bullet.position.y.int shr 4
             infos.loadedRoom.collisions.setTile(y, x, tile)
+            infos.loadedRoom.destroyableTilesList[VectorI64(x: x.int, y: y.int)] = false
             let pos = VectorI64(x: x, y: y)
             let tileChangeEvent = EventTileChange(coordinates: pos, tileType: AIR.uint16)
             let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(tileChangeEvent))
             infos.eventList.add(m)
+            return true
         of Collision.SWITCH_TILE:
             infos.loadedRoom.switchOn = not infos.loadedRoom.switchOn
             let switchEvent = EventSwitch(state: infos.loadedRoom.switchOn)

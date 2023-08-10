@@ -15,6 +15,7 @@ import math
 import gameInfos
 import ./actors/actors
 import std/monotimes
+import std/tables
 
 type
   GameInstance* = ref object
@@ -59,7 +60,7 @@ proc update*(game: GameInstance): void {.gcsafe.} =
         continue
       b.update(game.infos)
 
-proc serialize*(game: GameInstance): void =
+proc serialize*(game: GameInstance): void {.gcsafe.} =
     # Serializing the bullet list
     var bulletListSerialize: array[512, BulletSerialize]
     for i in 0..<game.infos.bulletList.len:
@@ -111,6 +112,17 @@ proc init*(game: GameInstance): void =
   player.currentRoom = game.infos.loadedRoom
   echo "Server booted! Listening for 📦 packets! 📦"
 
+proc checkNewDeadConnections(game: GameInstance): void {.gcsafe.} =
+  for connection in game.server.newConnections:
+      game.server.send(connection, toFlatty(message.Message(header: DESTROYABLE_TILES_DATA, data: toFlatty(game.infos.loadedRoom.destroyableTilesList))))
+      let switchEvent = EventSwitch(state: game.infos.loadedRoom.switchOn)
+      let m = message.Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
+      game.server.send(connection, toFlatty(m))
+      echo "[new] ", connection.address
+
+  for connection in game.server.deadConnections:
+      echo "[dead] ", connection.address
+
 proc bootGameInstance*() {.thread.} =
   var game = GameInstance()
   game.init()
@@ -121,14 +133,9 @@ proc bootGameInstance*() {.thread.} =
     game.infos.timeStart = cpuTime().float
     game.infos.delta = (game.infos.timeStart - game.infos.timeFinish).float
 
-    for connection in game.server.newConnections:
-      echo "[new] ", connection.address
-
-    for connection in game.server.deadConnections:
-      echo "[dead] ", connection.address
-
     game.update()
     game.serialize()
+    game.checkNewDeadConnections()
 
     game.infos.timeFinish = cpuTime()
     game.infos.delta = game.infos.timeFinish - game.infos.timeStart
