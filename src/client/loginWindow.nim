@@ -1,6 +1,7 @@
-import std/[times, os, tables, httpclient, asyncdispatch, strformat]
+import std/[times, os, tables, httpclient, asyncdispatch, strformat, strutils, asyncfutures]
 import imgui, imgui/[impl_opengl, impl_glfw]
 import nimgl/[opengl, glfw]
+import regex
 
 var
     loginName = newString(16)
@@ -11,17 +12,23 @@ var
     registerName = newString(16)
     registerPass = newString(32)
     registerErrorName = " "
+    # Added this because if I try to access registerErrorName directly from the callback, I have a segfault.
+    # So I use this hack to avoid any kind of segfault
+    registerNameAvaillable = true
     registerErrorPass = " "
 
-proc checkNameAvaillability(client: AsyncHttpClient, name: string): Future[string] {.async.} =
-  var a = await client.getContent(fmt"http://127.0.0.1/availlableName/{name}")
-#   var a = await client.getContent(fmt"http://127.0.0.1/")
-#   var a = await client.request(fmt"http://127.0.0.1/", HttpGet)
+proc checkNameAvaillability(client: AsyncHttpClient, name: string): Future[AsyncResponse] {.async.} =
+  var a = await client.get(fmt"http://127.0.0.1/availlableName/{name}")
+  echo fmt"name: {name}"
   return a
 
 proc validateName(name: string): string =
   if(name.len < 3 or name.len > 16):
     return "Name must be between 3 and 16 characters long!"
+  var m: RegexMatch2
+  if(not match(name, re2"^[a-zA-Z0-9]+$", m)):
+    return "Only alphanumeric characters are allowed!"
+  
   return ""
 
 proc validatePassword(password: string): string =
@@ -37,26 +44,34 @@ proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
     # operating with C strings.
     if(igInputText("Name##R", registerNameStrC, registerName.len.uint32 + 1)):
         registerName = $registerNameStrC
-        loginErrorName = validateName(registerName)
-        var f = client.checkNameAvaillability(registerName)
+        registerErrorName = validateName(registerName)
         registerName.setLen(16)
-        f.callback = (
-            proc () =
-                echo waitFor f
-        )
-        # echo "AAAAAAAAAAAAAAAAaa"
+
+        if(registerErrorName == ""):
+            var f = client.checkNameAvaillability(registerName)
+            asyncfutures.addCallback(f,
+                proc (f: Future[AsyncResponse]) {.closure, gcsafe.} =
+                    var res = f.read()
+                    echo res.status
+                    {.cast(gcsafe).}:
+                        if(res.status.startsWith("409")):
+                            echo "error"
+                            registerNameAvaillable = false
+                        else:
+                            registerNameAvaillable = true
+            )
 
     if(igInputText("Password##R", registerPassStrC, registerPass.len.uint32 + 1)):
         registerPass = $registerPassStrC
-        loginErrorPass = validatePassword(registerPass)
+        registerErrorPass = validatePassword(registerPass)
         registerPass.setLen(32)
 
     # Checks if the errors lengths are not zero.
-    let hasErrorsRegister = (registerErrorName.len != 0 or registerErrorPass.len != 0)
+    let hasErrorsRegister = (registerErrorName.len != 0 or registerErrorPass.len != 0 or not registerNameAvaillable)
     
     # Display the errors.
-    igText(loginErrorName.cstring)
-    igText(loginErrorPass.cstring)
+    igText(if (registerNameAvaillable or registerErrorName != ""): registerErrorName.cstring else: "Name not availlable.")
+    igText(registerErrorPass.cstring)
 
     # This is used to disable the button if there are errors.
     if(hasErrorsRegister):
@@ -181,9 +196,9 @@ proc openLoginWindow*(client: AsyncHttpClient) {.async.} =
 
     while not window.windowShouldClose:
         var a = window.drawWindow(client)
+        drain(16)
         # Waits for completion of all events and processes them. Raises ValueError if there are no pending operations.
         # In contrast to poll this processes as many events as are available until the timeout has elapsed.
-        drain(16)
         
 
     igOpenGL3Shutdown()
