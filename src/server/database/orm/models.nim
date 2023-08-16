@@ -1,6 +1,7 @@
 import norm/[model, sqlite, pool]
 import ../conn
 import std/options
+import std/times
 
     
 type
@@ -11,15 +12,19 @@ type
 
     GameORM* = ref object of Model
         # List of players of the game. 4 players max per game.
-        players*: array[4, PlayerORM]
+        # players*: seq[PlayerORM]
         # Creator of the game instance
         creator*: UserORM
         # The current level
         level*: int
         # Is the game finished?
         isFinished*: bool
+        # Did the game started?
+        hasStarted*: bool
         # Game code
         code*: string
+        # When the game is created?
+        creationDate*: DateTime
 
 
     PlayerORM* = ref object of Model
@@ -35,7 +40,7 @@ type
         game*: GameORM
 
 proc newUser*(pseudo: string, password: string): UserORM =
-    UserORM(pseudo: pseudo, password: password)
+    return UserORM(pseudo: pseudo, password: password)
 
 proc getUserByPseudo*(pseudo: string): Option[UserORM] {.gcsafe.} =
     var user = UserORM()
@@ -47,6 +52,13 @@ proc getUserByPseudo*(pseudo: string): Option[UserORM] {.gcsafe.} =
     except:
         return none(UserORM)
         
-func newGame(creator: UserORM, code: string): GameORM =
-    GameORM(creator: creator, code: code)
+proc newGame*(creator: UserORM, code: string): GameORM =
+    var game = GameORM(creator: creator, code: code, creationDate: now())
+    return game
 
+func newPlayer*(user: UserORM, game: GameORM): PlayerORM = 
+    return PlayerORM(
+    user: user,
+    game: game,
+    character: -1
+    )

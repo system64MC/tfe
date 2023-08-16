@@ -119,6 +119,7 @@ proc checkNewDeadConnections(game: GameInstance): void {.gcsafe.} =
       let m = message.Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
       game.server.send(connection, toFlatty(m))
       echo "[new] ", connection.address
+      echo "[SERVER : ]", game.server.address
 
   for connection in game.server.deadConnections:
       echo "[dead] ", connection.address
