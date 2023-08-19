@@ -2,7 +2,7 @@ import norm/[model, sqlite, pool]
 import ../conn
 import std/options
 import std/times
-
+import nimcrypto
     
 type
     UserORM* = ref object of Model
@@ -51,6 +51,25 @@ proc getUserByPseudo*(pseudo: string): Option[UserORM] {.gcsafe.} =
         return some(user)
     except:
         return none(UserORM)
+
+proc getUserByNameAndPassword*(name: string, password: string): Option[UserORM] =
+    var user = UserORM()
+    echo password
+    try:
+        withDbConn(con):
+            con.select(user, "UserORM.pseudo = ? AND UserORM.password = ?", name, $sha_256.digest(password))
+        return some(user)
+    except:
+        return none(UserORM)
+
+proc addUserToDb*(name: string, password: string): bool =
+    try:
+        var user = newUser(name, $(sha_256.digest(password)))
+        withDbConn(con):
+            con.insert(user)
+        return true
+    except:
+        return false
         
 proc newGame*(creator: UserORM, code: string): GameORM =
     var game = GameORM(creator: creator, code: code, creationDate: now())

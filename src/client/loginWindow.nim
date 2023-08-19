@@ -16,9 +16,10 @@ var
     # So I use this hack to avoid any kind of segfault
     registerNameAvaillable = true
     registerErrorPass = " "
+    registerProblem = false
 
 proc checkNameAvaillability(client: AsyncHttpClient, name: string): Future[AsyncResponse] {.async.} =
-  var a = await client.get(fmt"http://127.0.0.1/availlableName/{name}")
+  var a = await client.get(fmt"http://127.0.0.1/availlableName/{name.cstring}")
   echo fmt"name: {name}"
   return a
 
@@ -36,6 +37,13 @@ proc validatePassword(password: string): string =
     return "Password must be at least 6 characters long!"
   return ""
 
+import std/json
+proc register(client: AsyncHttpClient): Future[AsyncResponse] {.async.} =
+    var json = %* {"name": $(registerName.cstring), "password": $(registerPass.cstring)}
+    echo $json
+    var a = await client.post("http://127.0.0.1/register", $json)
+    return a
+
 proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
     var registerNameStrC = registerName.cstring
     var registerPassStrC = registerPass.cstring
@@ -51,17 +59,19 @@ proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
             var f = client.checkNameAvaillability(registerName)
             asyncfutures.addCallback(f,
                 proc (f: Future[AsyncResponse]) {.closure, gcsafe.} =
-                    var res = f.read()
-                    echo res.status
-                    {.cast(gcsafe).}:
-                        if(res.status.startsWith("409")):
-                            echo "error"
-                            registerNameAvaillable = false
-                        else:
-                            registerNameAvaillable = true
+                    try:
+                        var res = f.read()
+                        {.cast(gcsafe).}:
+                            if(res.status.startsWith("409")):
+                                echo "error"
+                                registerNameAvaillable = false
+                            else:
+                                registerNameAvaillable = true
+                    except:
+                        discard
             )
 
-    if(igInputText("Password##R", registerPassStrC, registerPass.len.uint32 + 1)):
+    if(igInputText("Password##R", registerPassStrC, registerPass.len.uint32 + 1, flags = ImGuiInputTextFlags.Password)):
         registerPass = $registerPassStrC
         registerErrorPass = validatePassword(registerPass)
         registerPass.setLen(32)
@@ -72,6 +82,7 @@ proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
     # Display the errors.
     igText(if (registerNameAvaillable or registerErrorName != ""): registerErrorName.cstring else: "Name not availlable.")
     igText(registerErrorPass.cstring)
+    igText(if(not registerProblem): "".cstring else: "A problem occured during registration. Please try again".cstring)
 
     # This is used to disable the button if there are errors.
     if(hasErrorsRegister):
@@ -79,7 +90,21 @@ proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
         igPushItemFlag(ImGuiItemFlags.Disabled, hasErrorsRegister)
         igPushStyleVar(ImGuiStyleVar.Alpha, style.alpha * 0.5)
     if(igButton("register")):
-        echo "Hello world!"
+        let r = client.register()
+        asyncfutures.addCallback(r,
+                proc (r: Future[AsyncResponse]) {.closure, gcsafe.} =
+                    try:
+                        var res = r.read()
+                        echo res.status
+                        {.cast(gcsafe).}:
+                            if(res.status.startsWith("200")):
+                                igSetTabItemClosed("Register")
+                                registerProblem = false
+                            else:
+                                registerProblem = true
+                    except:
+                        registerProblem = true
+            )
     if(hasErrorsRegister):
         igPopItemFlag()
         igPopStyleVar()

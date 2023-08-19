@@ -4,6 +4,20 @@ import database/db
 import database/orm/models
 import std/options
 import std/encodings
+import std/json
+import regex
+
+# We also validate on server side. NEVER TRUST THE CLIENT!!
+proc validateName(name: string): bool =
+    if(name.len < 3 or name.len > 16): return false
+    var m: RegexMatch2
+    if(not match(name, re2"^[a-zA-Z0-9]+$", m)): return false
+    if(getUserByPseudo(name).isSome): return false
+    return true
+
+proc validatePassword(password: string): bool =
+    if(password.len < 6 and password.len > 32): return false
+    return true
 
 router apiRouter:
     get "/availlableName/@name":
@@ -20,7 +34,13 @@ router apiRouter:
         resp "This is a simple test..."
 
     post "/register":
-        resp "0"
+        var myJson = parseJson(request.body)
+        let name = $(myJson["name"].getStr().cstring)
+        let pass = $(myJson["password"].getStr().cstring)
+        if not validatePassword(pass): resp Http400
+        if not validateName(name): resp Http409
+        if(addUserToDb(name, pass)): resp Http200
+        resp Http500
 
 proc bootApi*(): void =
     let port = 80.Port
