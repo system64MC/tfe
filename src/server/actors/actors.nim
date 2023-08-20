@@ -1,6 +1,5 @@
 import ../utils/hitbox
 import ../../common/vectors
-import ../room/room
 import ../../common/message
 import ../../common/constants
 
@@ -21,7 +20,7 @@ type
         character*: uint8
         lifes*: uint8
         input*: uint8
-        currentRoom*: Room
+        # currentRoom*: Room
         timers*: array[8, uint16]
         deltaTimeHowManyValues*: int = 0
         deltaTimeAccumulator*: float64 = 0
@@ -40,6 +39,6 @@ type
         isPlayer*: bool
         bulletId*: uint16
         vector*: VectorF64
-        currentRoom*: Room
+        # currentRoom*: Room
 
     

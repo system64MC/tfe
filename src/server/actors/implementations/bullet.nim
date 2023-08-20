@@ -1,7 +1,9 @@
 import actor
+import ../bulletList
 import ../../../common/vectors
 import math
 import ../../room/room
+import ../../room/roomImplementation
 import ../../../common/message
 import ../../../common/events
 import ../../utils/hitbox
@@ -61,7 +63,7 @@ proc checkCollisions(bullet: Bullet, infos: var GameInfos): bool =
 
 method update*(bullet: Bullet, infos: var GameInfos): void = 
     if(bullet.checkCollisions(infos)):
-        infos.bulletList.remove(bullet.bulletId.int)
+        infos.loadedRoom.bulletList.remove(bullet.bulletId.int)
         # bullet.bulletType = -1
         return
 

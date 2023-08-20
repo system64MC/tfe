@@ -1,10 +1,12 @@
 import ../actors
+import ../bulletList
 import ../../../common/vectors
 import ../../../common/message
 import ../../utils/hitbox
 import flatty
 import tilengine/tilengine
 import ../../room/room
+import ../../room/roomImplementation
 import ../../gameInfos
 import math
 import ../../../common/constants
@@ -306,7 +308,6 @@ proc fireSimple(player: actors.Player, bulletList: var BulletList) =
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
         bulletId: bulletList.getFreeIndex().uint16, 
-        currentRoom: nil,
         )
     bulletList.add(b)
 
@@ -323,7 +324,6 @@ proc fireDouble(player: actors.Player, bulletList: var BulletList) =
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
         bulletId: bulletList.getFreeIndex().uint16, 
-        currentRoom: nil,
         )
     bulletList.add(b)
     
@@ -336,7 +336,6 @@ proc fireDouble(player: actors.Player, bulletList: var BulletList) =
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
         bulletId: bulletList.getFreeIndex().uint16, 
-        currentRoom: nil,
         )
     bulletList.add(b2)
 
@@ -357,7 +356,6 @@ proc fireTriple(player: actors.Player, bulletList: var BulletList) =
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
         bulletId: bulletList.getFreeIndex().uint16, 
-        currentRoom: nil,
         )
     bulletList.add(b)
     
@@ -371,7 +369,6 @@ proc fireTriple(player: actors.Player, bulletList: var BulletList) =
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
         bulletId: bulletList.getFreeIndex().uint16, 
-        currentRoom: nil,
         )
     bulletList.add(b2)
     
@@ -385,7 +382,6 @@ proc fireTriple(player: actors.Player, bulletList: var BulletList) =
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
         bulletId: bulletList.getFreeIndex().uint16, 
-        currentRoom: nil,
         )
     bulletList.add(b3)
 
@@ -429,7 +425,7 @@ method update*(player: actors.Player, infos: var GameInfos): void =
     if(player.inputDown()):  player.velY += 2 * player.deltaTime * TPS
     if(player.inputLeft()):  player.velX -= 2 * player.deltaTime * TPS
     if(player.inputRight()): player.velX += 2 * player.deltaTime * TPS
-    if(player.inputFire()): player.fire(infos.bulletList)
+    if(player.inputFire()): player.fire(infos.loadedRoom.bulletList)
 
     # TODO : Remove this
     if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0
