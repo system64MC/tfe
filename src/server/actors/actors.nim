@@ -5,6 +5,11 @@ import ../../common/message
 import ../../common/constants
 
 type
+    Powerup* = enum
+        SIMPLE
+        DOUBLE
+        TRIPLE
+
     Actor* = ref object of RootObj
         position*: VectorF64
         hitbox*: Hitbox
@@ -21,6 +26,14 @@ type
         deltaTimeHowManyValues*: int = 0
         deltaTimeAccumulator*: float64 = 0
         deltaTime*: float64 = 0
+        # Which bonus the player has
+        powerUp*: Powerup
+        # How many bombs the player has
+        bombs*: byte
+
+    Ennemy* = ref object of Actor
+        ennemyType*: int
+        lifePoints*: int
 
     Bullet* = ref object of Actor
         bulletType*: int

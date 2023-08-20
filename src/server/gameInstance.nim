@@ -48,22 +48,24 @@ proc update*(game: GameInstance): void {.gcsafe.} =
       game.infos.playerList[0].deltaTimeHowManyValues = 0
     game.infos.playerList[0].update(game.infos)
     
-    for i in 0..<game.infos.bulletList.len:
+    for i in 0..<game.infos.bulletList.list.len:
       var b = game.infos.bulletList[i]
       if(b == nil): continue
       if(b.bulletType < 0):
-        game.infos.bulletList[i] = nil
+        game.infos.bulletList.remove(i)
+        # game.infos.bulletList[i] = nil
         continue
       if(b.position.x > SCREEN_X or b.position.x < 0 or
         b.position.y > SCREEN_Y or b.position.y < 0):
-        game.infos.bulletList[i] = nil
+        game.infos.bulletList.remove(i)
+        # game.infos.bulletList[i] = nil
         continue
       b.update(game.infos)
 
 proc serialize*(game: GameInstance): void {.gcsafe.} =
     # Serializing the bullet list
     var bulletListSerialize: array[512, BulletSerialize]
-    for i in 0..<game.infos.bulletList.len:
+    for i in 0..<game.infos.bulletList.list.len:
         let b = game.infos.bulletList[i]
         if(b == nil):
           bulletListSerialize[i] = nil
@@ -100,6 +102,7 @@ proc addBullet*(game: GameInstance, isPlayer: bool = true, bType: int = 0, direc
 
 proc init*(game: GameInstance): void =
   game.infos.eventList = newSeq[message.Message](0)
+  game.infos.bulletList = initBulletList()
   var player = constructPlayer(VectorF64(x: 50, y: 50), 0, 5)
 
   game.infos.playerList[0] = player

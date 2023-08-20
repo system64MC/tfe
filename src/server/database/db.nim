@@ -17,6 +17,7 @@ proc seedDb*(): void =
         newUser("Remilia", $sha_256.digest("Remilia")),
         newUser("System64", $sha_256.digest("System64")),
         newUser("Kurumi", $sha_256.digest("Kurumi")),
+        newUser("KurumiA", $sha_256.digest("Kurumi")),
     ]
     var games = @[
         newGame(users[0], "abcd")
@@ -27,10 +28,24 @@ proc seedDb*(): void =
     ]
 
     withDbConn(con):
+        # Adding constraints is always good and prevents business rules violations by throwing errors.
+        con.exec(SqlQuery(
+        """
+        CREATE TABLE UserORM(
+            pseudo TEXT NOT NULL CHECK(length(pseudo) >= 3 and length(pseudo) <= 16),
+            password TEXT NOT NULL,
+            id INTEGER NOT NULL PRIMARY KEY
+        );
+        """))
+
         # Creating tables
-        con.createTables(users[0])
         con.createTables(games[0])
         con.createTables(players[0])
+
+        con.exec(SqlQuery(
+        """
+        CREATE UNIQUE INDEX unique_code ON GameORM(code);
+        """))
 
         # Seeding data into the Database.
         con.insert(users)

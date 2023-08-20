@@ -292,11 +292,12 @@ method checkCollisionsOld(player: actors.Player, loadedRoom: Room): void =
 #       )
 #     break
 
-method fire*(player: actors.Player, bulletList: var array[512, Bullet]): void {.base, gcsafe.} =
-    if(player.timers[0] > 0): return
-    for i in 0..<512:
-        if(bulletList[i] != nil): continue
-        bulletList[i] = Bullet(
+
+#[
+    P - - -
+]#
+proc fireSimple(player: actors.Player, bulletList: var BulletList) =
+    let b = Bullet(
         isPlayer: true, 
         bulletType: 0, 
         vector: VectorF64(x: 0, y: 4),
@@ -304,11 +305,120 @@ method fire*(player: actors.Player, bulletList: var array[512, Bullet]): void {.
             x: player.position.x + player.hitbox.size.x.float64,
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
-        bulletId: i.uint16, 
+        bulletId: bulletList.getFreeIndex().uint16, 
         currentRoom: nil,
         )
-        player.timers[0] = 5
-        return
+    bulletList.add(b)
+
+#[
+    - - - P - - -
+]#
+proc fireDouble(player: actors.Player, bulletList: var BulletList) =
+    let b = Bullet(
+        isPlayer: true, 
+        bulletType: 0, 
+        vector: VectorF64(x: 0, y: 4),
+        position: VectorF64(
+            x: player.position.x + player.hitbox.size.x.float64,
+            y: player.position.y + player.hitbox.size.y.float64 / 2
+        ),
+        bulletId: bulletList.getFreeIndex().uint16, 
+        currentRoom: nil,
+        )
+    bulletList.add(b)
+    
+    let b2 = Bullet(
+        isPlayer: true, 
+        bulletType: 0, 
+        vector: VectorF64(x: 180, y: 4),
+        position: VectorF64(
+            x: player.position.x + player.hitbox.size.x.float64,
+            y: player.position.y + player.hitbox.size.y.float64 / 2
+        ),
+        bulletId: bulletList.getFreeIndex().uint16, 
+        currentRoom: nil,
+        )
+    bulletList.add(b2)
+
+#[
+      /
+     /
+    p - -
+     \
+      \
+]#
+proc fireTriple(player: actors.Player, bulletList: var BulletList) =
+    let b = Bullet(
+        isPlayer: true, 
+        bulletType: 0, 
+        vector: VectorF64(x: 0, y: 4),
+        position: VectorF64(
+            x: player.position.x + player.hitbox.size.x.float64,
+            y: player.position.y + player.hitbox.size.y.float64 / 2
+        ),
+        bulletId: bulletList.getFreeIndex().uint16, 
+        currentRoom: nil,
+        )
+    bulletList.add(b)
+    
+
+    let b2 = Bullet(
+        isPlayer: true, 
+        bulletType: 0, 
+        vector: VectorF64(x: 30, y: 4),
+        position: VectorF64(
+            x: player.position.x + player.hitbox.size.x.float64,
+            y: player.position.y + player.hitbox.size.y.float64 / 2
+        ),
+        bulletId: bulletList.getFreeIndex().uint16, 
+        currentRoom: nil,
+        )
+    bulletList.add(b2)
+    
+
+    let b3 = Bullet(
+        isPlayer: true, 
+        bulletType: 0, 
+        vector: VectorF64(x: -30, y: 4),
+        position: VectorF64(
+            x: player.position.x + player.hitbox.size.x.float64,
+            y: player.position.y + player.hitbox.size.y.float64 / 2
+        ),
+        bulletId: bulletList.getFreeIndex().uint16, 
+        currentRoom: nil,
+        )
+    bulletList.add(b3)
+
+
+
+method fire*(player: actors.Player, bulletList: var BulletList): void {.base, gcsafe.} =
+    if(player.timers[0] > 0): return
+    case player.powerUp:
+    of Powerup.SIMPLE:
+        player.fireSimple(bulletList)
+    of Powerup.DOUBLE:
+        player.fireDouble(bulletList)
+    of Powerup.TRIPLE:
+        player.fireTriple(bulletList)
+    
+    player.timers[0] = 5
+    return
+
+    # for i in 0..<512:
+    #     if(bulletList[i] != nil): continue
+    #     bulletList[i] = Bullet(
+    #     isPlayer: true, 
+    #     bulletType: 0, 
+    #     vector: VectorF64(x: 0, y: 4),
+    #     position: VectorF64(
+    #         x: player.position.x + player.hitbox.size.x.float64,
+    #         y: player.position.y + player.hitbox.size.y.float64 / 2
+    #     ),
+    #     bulletId: i.uint16, 
+    #     currentRoom: nil,
+    #     )
+    #     player.timers[0] = 5
+    #     return
 
 method update*(player: actors.Player, infos: var GameInfos): void =
     if(player.isNil): return

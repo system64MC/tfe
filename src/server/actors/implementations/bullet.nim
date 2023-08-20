@@ -60,14 +60,16 @@ proc checkCollisions(bullet: Bullet, infos: var GameInfos): bool =
             return false
 
 method update*(bullet: Bullet, infos: var GameInfos): void = 
-    # Getting X component
     if(bullet.checkCollisions(infos)):
-        bullet.bulletType = -1
+        infos.bulletList.remove(bullet.bulletId.int)
+        # bullet.bulletType = -1
         return
-    let xSpeed = bullet.vector.y * cos(bullet.vector.x)
+
+    # Getting X component
+    let xSpeed = bullet.vector.y * cos(bullet.vector.x.degToRad)
     
     # Getting Y component
-    let ySpeed = bullet.vector.y * sin(bullet.vector.x)
+    let ySpeed = bullet.vector.y * sin(bullet.vector.x.degToRad)
 
     bullet.position.x += xSpeed
     bullet.position.y += ySpeed
