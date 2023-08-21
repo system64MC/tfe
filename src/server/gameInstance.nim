@@ -40,23 +40,14 @@ proc update*(game: GameInstance): void {.gcsafe.} =
     game.infos.eventList.setLen(0)
     game.infos.loadedRoom.update(game.infos)
 
+import supersnappy
 proc serialize*(game: GameInstance): void {.gcsafe.} =
-    # Serializing the bullet list
-    var bulletListSerialize: array[512, BulletSerialize]
-    for i in 0..<game.infos.loadedRoom.bulletList.list.len:
-        let b = game.infos.loadedRoom.bulletList[i]
-        if(b == nil):
-            bulletListSerialize[i] = nil
-            continue
-        bulletListSerialize[i] = game.infos.loadedRoom.bulletList[i].toSerializeObject()
-    let bList = toFlatty(message.Message(header: MessageHeader.BULLET_LIST, data: toFlatty(bulletListSerialize)))
-    let camData = game.infos.loadedRoom.camera.serialize()
+    let d = compress(game.infos.loadedRoom.serialize())
+    let roomData = toFlatty(message.Message(header: MessageHeader.ROOM_DATA, data: d))
 
     # Sending data to the server.
     for connection in game.server.connections:
-        game.server.send(connection, camData)
-        game.server.send(connection, bList)
-        game.server.send(connection, game.infos.loadedRoom.playerList[0].serialize())
+        game.server.send(connection, roomData)
 
     # Sending events to the server.
     for e in game.infos.eventList:

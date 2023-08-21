@@ -10,8 +10,7 @@ type
         velY*: float64
         # timers*: array[8, uint16]
 
-method draw*(actor: Actor): void {.base.} = 
-    return
+
 
 proc unserialize*(data: string): Actor =
     return nil

@@ -5,12 +5,11 @@ import math
 import ../../room/room
 import ../../../common/message
 import ../../../common/events
+import ../../../common/commonActors
 import ../../utils/hitbox
 import ../../gameInfos
 import tilengine/tilengine
 import flatty
-from ../actors import Bullet
-from ../actors import Actor
 import std/tables
 
 type

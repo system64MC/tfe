@@ -1,6 +1,7 @@
-import ../camera
+# import ../camera
 import ../../common/vectors
 import ../../common/constants
+import ../../common/commonActors
 import tilengine/tilengine
 import std/tables
 import ../actors/actors
@@ -13,8 +14,8 @@ type
     switchOn*: bool
     destroyableTilesList*: Table[VectorI64, bool]
     playerList*: array[4, actors.Player]
-    enemyList*: array[256, Ennemy]
     bulletList*: BulletList
+    enemyList*: array[256, Ennemy]
 
   Collision* = enum
     NULL_TILE

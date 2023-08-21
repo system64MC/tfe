@@ -1,6 +1,6 @@
 import room
 import ../camera
-import ../../common/[vectors, constants]
+import ../../common/[vectors, constants, commonActors, serializedObjects, message]
 import ../actors/actors
 import ../actors/bulletList
 import ../actors/implementations/[player, bullet]
@@ -78,3 +78,21 @@ proc loadRoom*(path: string): Room =
     #                 )
     #             )
     return room
+
+proc serializePlayers(room: Room): array[4, PlayerSerialize] =
+    var arr: array[4, PlayerSerialize]
+    for i in 0..<room.playerList.len:
+        let p = room.playerList[i]
+        if(p != nil):
+            arr[i] = p.serialize()
+    return arr
+
+import flatty
+proc serialize*(room: Room): string =
+    var r = RoomSerialize(
+        camera: room.camera,
+        switchOn: room.switchOn,
+        bulletList: room.bulletList.list,
+        playerList: room.serializePlayers()
+    )
+    return toFlatty(r)

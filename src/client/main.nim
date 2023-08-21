@@ -8,15 +8,16 @@ import ../common/vectors
 import ../common/message
 import ../common/events
 import ../common/constants
-import actors/player
-import actors/bullet
+# import actors/player
+# import actors/bullet
 import room/background
-import camera
+# import camera
 import tilengine/bitmapUtils
 import std/monotimes
 import std/[times, os, tables, httpclient, asyncdispatch, strformat]
 import loginWindow
-import ../common/credentials
+import ../common/[credentials, commonActors, serializedObjects]
+import drawing
 
 proc serializeInputs(): string =
   var input = (
@@ -38,7 +39,7 @@ proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16
 
 var bulletList*: array[512, Bullet]
 
-var cam = Camera(position: VectorF64(x: 0, y: 0))
+# var cam = Camera(position: VectorF64(x: 0, y: 0))
 
 # proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
 #     return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
@@ -66,12 +67,23 @@ var switchState = true
 var needSwitching = false
 
 var creds: CredentialsEncrypted
+var room = RoomSerialize(
+  camera: Camera(position: VectorF64(x: 0, y: 0)),
+  playerList: [PlayerSerialize(), nil, nil, nil]
+)
+
+import supersnappy
+proc unserializeRoom(data: string) =
+    # echo data.len
+    let r = fromFlatty(uncompress(data), RoomSerialize)
+    if(r != nil): room = r
+    # else: echo "ERROR"
 
 proc main() =
   var httpClient = newAsyncHttpClient()
   creds = waitFor openLoginWindow(httpClient)
   # waitFor startAuthWindow(httpClient)
-  cam = Camera()
+  # cam = Camera()
   var e = init(SCREEN_X, SCREEN_Y, 3, 128, 64)
   initBitmapLayer()
   discard ("e")
@@ -79,10 +91,10 @@ proc main() =
   var client = newReactor()
   var connection = client.connect("127.0.0.1", 5173)
   
-  var player = player.Player()
+  # var player = player.Player()
 
   var playerSprite = loadSpriteset("./assets/sprites/player.png")
-  let sprPlayer = Sprite(player.character)
+  let sprPlayer = Sprite(room.playerList[0].character)
   sprPlayer.setSpriteSet(playerSprite)
 
   let foreground = Layer(0)
@@ -102,17 +114,8 @@ proc main() =
 
     for msg in client.messages:
       let myMsg = fromFlatty(msg.data, message.Message)
-      # if(msg.)
       case myMsg.header:
-      of MessageHeader.PLAYER_DATA:
-        player = unserialize(myMsg.data)
-      of MessageHeader.BULLET_LIST:
-        bulletList = fromFlatty(myMsg.data, array[512, Bullet])
-      of MessageHeader.BULLET_NULL:
-        let i = fromFlatty(myMsg.data, uint16)
-        bulletList[i] = nil
-      of MessageHeader.CAMERA_DATA:
-        cam = fromFlatty(myMsg.data, Camera)
+      of MessageHeader.ROOM_DATA: unserializeRoom(myMsg.data)
       of MessageHeader.EVENT_DESTROY_TILE:
         let e = fromFlatty(myMsg.data, EventTileChange)
         var tile = map.getTile(e.coordinates.y, e.coordinates.x)
@@ -130,11 +133,6 @@ proc main() =
             var tile = map.getTile(coordinates.y, coordinates.x)
             tile.index = 1
             map.setTile(coordinates.y, coordinates.x, tile)
-        # for i in 0..<1:
-        #   # echo ()
-        #   if(myArr[i] == $((1).char)): continue
-        #   echo hexPrint(myArr[i])
-        #   bulletList[i] = fromFlatty(myArr[i], bullet.Bullet)
       else:
         continue
     
@@ -143,9 +141,10 @@ proc main() =
     # bulletList = fromFlatty(client.messages[0].data, array[512, Bullet])
     # player = unserialize(client.messages[1].data)
     Background.bitmap.clearBitmap()
-    foreground.setPosition(cam.position.x.int, cam.position.y.int)
-    player.draw()
-    for b in bulletList:
+    # foreground.setPosition(cam.position.x.int, cam.position.y.int)
+    foreground.setPosition(room.camera.position.x.int, room.camera.position.y.int)
+    room.playerList[0].draw()
+    for b in room.bulletList:
       if(b == nil): continue
       b.draw()
     drawFrame(0)

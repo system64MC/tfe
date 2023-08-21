@@ -2,7 +2,9 @@ import ../actors
 import ../bulletList
 import ../../../common/vectors
 import ../../../common/message
-import ../../utils/hitbox
+import ../../../common/hitbox
+import ../../../common/commonActors
+import ../../../common/serializedObjects
 import flatty
 import tilengine/tilengine
 import ../../room/room
@@ -19,11 +21,11 @@ method serialize*(actor: Actor): string {.base.} =
 
 var playerInput*: uint8 = 0b0000_0000 # Input of player.
 
-type
-    # WARNING : This object is for serializing only! Do not use for gameplay!
-    PlayerSerialize = ref object of Actor
-        character*: uint8
-        lifes*: uint8
+# type
+#     # WARNING : This object is for serializing only! Do not use for gameplay!
+#     PlayerSerialize = ref object of Actor
+#         character*: uint8
+#         lifes*: uint8
 
 proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): actors.Player =
     var player = actors.Player()
@@ -41,7 +43,7 @@ proc inputFire(player: actors.Player):  bool = return ((player.input and 0b0001_
 proc inputA(player: actors.Player):     bool = return ((player.input and 0b0010_0000) > 0)
 proc inputB(player: actors.Player):     bool = return ((player.input and 0b0100_0000) > 0)
 
-method checkCollisions(player: actors.Player, loadedRoom: Room): void =
+method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
     if(loadedRoom == nil): return
 
     let camX = loadedRoom.camera.position.x
@@ -188,7 +190,7 @@ method checkCollisions(player: actors.Player, loadedRoom: Room): void =
                 continue
 
 # Do not use. This is the old collisions engine. Keeping as archive for now.
-method checkCollisionsOld(player: actors.Player, loadedRoom: Room): void =
+method checkCollisionsOld(player: actors.Player, loadedRoom: room.Room): void =
     let camX = loadedRoom.camera.position.x
     let camV = loadedRoom.camera.velocity.x
     #[
@@ -404,7 +406,7 @@ method update*(player: actors.Player, infos: var GameInfos): void =
     player.input = 0
     return
 
-method serialize*(player: actors.Player): string = 
+method serializeOld*(player: actors.Player): string = 
     var p = PlayerSerialize()
     p.position = player.position
     p.hitbox = player.hitbox
@@ -413,3 +415,14 @@ method serialize*(player: actors.Player): string =
     p.lifes = player.lifes
     p.character = player.character
     return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))
+
+method serialize*(player: actors.Player): PlayerSerialize = 
+    var p = PlayerSerialize()
+    p.position = player.position
+    p.hitbox = player.hitbox
+    p.velX = player.velX
+    p.velY = player.velY
+    p.lifes = player.lifes
+    p.character = player.character
+    return p
+    # return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))

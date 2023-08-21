@@ -1,5 +1,5 @@
 import std/lists
-import actors
+import ../../common/commonActors
 
 type
     BulletList* = object

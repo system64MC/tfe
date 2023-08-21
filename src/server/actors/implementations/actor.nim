@@ -20,5 +20,5 @@ type
 
 
 
-method checkCollisions(actor: Actor): void {.base.} =
-    return
+# method checkCollisions(actor: Actor): void {.base.} =
+#     return

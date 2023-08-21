@@ -1,4 +1,4 @@
-import ../camera
+import ../../common/commonActors
 import background
 
 const NUM_BACKGRONDS* = 1

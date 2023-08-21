@@ -1,11 +1,7 @@
 import ../common/vectors
 import ../common/message
+import ../common/commonActors
 import flatty
-
-type
-    Camera* = ref object of RootObj
-        position*: VectorF64
-        velocity*: VectorF64
 
 method update*(camera: Camera): void {.base.} =
     # camera.position.x.inc()
