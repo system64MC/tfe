@@ -1,0 +1,81 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "run-all",
+            "detail": "Démarre le client et le server",
+            "group": "build",
+            "dependsOn": [
+                "run-client",
+                "run-server"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "build-all",
+            "detail": "build le client et le server",
+            "group": "build",
+            "dependsOn": [
+                "build-client",
+                "build-server"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "run-client",
+            "detail": "Démarre le client",
+            "type": "shell",
+            "command": "./run-client.bat",
+            "options": {
+                // "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "presentation": {
+                "group": "servers"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run-server",
+            "detail": "Démarre le server",
+            "type": "shell",
+            "command": "./run-server.bat",
+            "options": {
+                // "cwd": "${workspaceFolder}/backend"
+            },
+            "group": "build",
+            "presentation": {
+                "group": "servers"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-client",
+            "detail": "Compile le client",
+            "type": "shell",
+            "command": "./build-client.bat",
+            "options": {
+                // "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "presentation": {
+                "group": "servers"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-server",
+            "detail": "Compile le serveur",
+            "type": "shell",
+            "command": "./build-server.bat",
+            "options": {
+                // "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "presentation": {
+                "group": "servers"
+            },
+            "problemMatcher": "$msCompile"
+        },
+    ]
+}

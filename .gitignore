@@ -1,0 +1,16 @@
+# Ignore executables
+*.exe
+*.out
+# *.dll
+*.so
+*.dylib
+*.jar
+
+# Ignore the BACKUP folder
+/BACKUP/
+/out/
+/server/nimbledeps/
+/server/out/
+/client/nimbledeps/
+/client/out/
+/nimclipboard/

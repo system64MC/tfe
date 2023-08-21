@@ -1,1 +1,0 @@
-nim compile -r --passL:"Tilengine.dll" --threads:on -d:nimDontSetUtf8CodePage main.nim
