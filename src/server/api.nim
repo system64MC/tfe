@@ -6,6 +6,7 @@ import std/options
 import std/encodings
 import std/json
 import regex
+import crypto
 
 # We also validate on server side. NEVER TRUST THE CLIENT!!
 proc validateName(name: string): bool =
@@ -41,6 +42,19 @@ router apiRouter:
         if not validateName(name): resp Http409
         if(addUserToDb(name, pass)): resp Http200
         resp Http500
+
+    post "/login":
+        var myJson = parseJson(request.body)
+        let name = $(myJson["name"].getStr().cstring)
+        let pass = $(myJson["password"].getStr().cstring)
+        let user = getUserByNameAndPassword(name, pass)
+        if user.isNone:
+            resp Http401
+        else:
+            let json = %* {"key": getPublicKey()}
+            resp(Http200, $json, "application/json")
+        resp(Http500)
+
 
 proc bootApi*(): void =
     let port = 80.Port

@@ -6,7 +6,6 @@ import ../../utils/hitbox
 import flatty
 import tilengine/tilengine
 import ../../room/room
-import ../../room/roomImplementation
 import ../../gameInfos
 import math
 import ../../../common/constants
@@ -275,26 +274,6 @@ method checkCollisionsOld(player: actors.Player, loadedRoom: Room): void =
 
     player.position.y += player.velY
     
-
-# proc addBullet*(game: GameInstance, isPlayer: bool = true, bType: int = 0, direction: VectorF64 = VectorF64(x: 0, y: 1), position: VectorF64): void =
-#   for i in 0..<512:
-#     if(game.infos.bulletList[i] != nil): continue
-#     game.infos.bulletList[i] = Bullet(
-#       isPlayer: isPlayer, 
-#       bulletType: bType, 
-#       vector: direction, 
-#       position: position, 
-#       bulletId: i.uint16, 
-#       currentRoom: game.infos.loadedRoom,
-#       eventCallback:
-#       (
-#         proc(message: message.Message) =
-#           game.infos.eventList.add(message)
-#       )
-#       )
-#     break
-
-
 #[
     P - - -
 ]#
@@ -399,22 +378,6 @@ method fire*(player: actors.Player, bulletList: var BulletList): void {.base, gc
     
     player.timers[0] = 5
     return
-
-    # for i in 0..<512:
-    #     if(bulletList[i] != nil): continue
-    #     bulletList[i] = Bullet(
-    #     isPlayer: true, 
-    #     bulletType: 0, 
-    #     vector: VectorF64(x: 0, y: 4),
-    #     position: VectorF64(
-    #         x: player.position.x + player.hitbox.size.x.float64,
-    #         y: player.position.y + player.hitbox.size.y.float64 / 2
-    #     ),
-    #     bulletId: i.uint16, 
-    #     currentRoom: nil,
-    #     )
-    #     player.timers[0] = 5
-    #     return
 
 method update*(player: actors.Player, infos: var GameInfos): void =
     if(player.isNil): return

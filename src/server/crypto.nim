@@ -3,7 +3,7 @@ import libsodium/sodium
 var publicKey = ""
 var privateKey = ""
 
-proc generateKeys() =
+proc generateKeys*() =
     let (pubk, privk) = cryptobox_keypair()
     publicKey = pubk
     privateKey = privk

@@ -38,19 +38,7 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
 
 proc update*(game: GameInstance): void {.gcsafe.} =
     game.infos.eventList.setLen(0)
-    game.infos.loadedRoom.playerList[0].update(game.infos)
-    
-    for i in 0..<game.infos.loadedRoom.bulletList.list.len:
-        var b = game.infos.loadedRoom.bulletList[i]
-        if(b == nil): continue
-        if(b.bulletType < 0):
-            game.infos.loadedRoom.bulletList.remove(i)
-            continue
-        if(b.position.x > SCREEN_X or b.position.x < 0 or
-            b.position.y > SCREEN_Y or b.position.y < 0):
-            game.infos.loadedRoom.bulletList.remove(i)
-            continue
-        b.update(game.infos)
+    game.infos.loadedRoom.update(game.infos)
 
 proc serialize*(game: GameInstance): void {.gcsafe.} =
     # Serializing the bullet list
@@ -78,12 +66,12 @@ proc serialize*(game: GameInstance): void {.gcsafe.} =
 
 proc init*(game: GameInstance): void =
     game.infos.eventList = newSeq[message.Message](0)
-    # We load the test room.
-    game.infos.loadedRoom = loadRoom("assets/tilemaps/testRoom.tmx")
+    game.infos.loadedRoom = Room()
     game.infos.loadedRoom.bulletList = initBulletList()
     var player = constructPlayer(VectorF64(x: 50, y: 50), 0, 5)
-
     game.infos.loadedRoom.playerList[0] = player
+    # We load the test room.
+    game.infos.loadedRoom.setupMap("assets/tilemaps/testRoom.tmx")
 
     # Creating the server, listening on the ELIS port (Port 5173)
     game.server = newReactor("127.0.0.1", 5173)

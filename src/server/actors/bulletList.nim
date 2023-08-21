@@ -6,6 +6,10 @@ type
         list*:array[512, Bullet]
         slotStack: SinglyLinkedList[int]
 
+iterator items*(bulletList: BulletList): Bullet =
+    for b in bulletList.list:
+        yield b
+
 proc initBulletList*(): BulletList =
     var bl = BulletList()
     for i in 0..<512:

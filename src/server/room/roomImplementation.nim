@@ -1,9 +1,47 @@
 import room
 import ../camera
-import ../../common/vectors
-import ../../common/constants
+import ../../common/[vectors, constants]
+import ../actors/actors
+import ../actors/bulletList
+import ../actors/implementations/[player, bullet]
 import tilengine/tilengine
 import std/tables
+import ../gameInfos
+
+proc updatePlayers(room: Room, infos: var GameInfos) =
+    for p in room.playerList:
+        if(p != nil): p.update(infos)
+
+proc updateBullets(room: Room, infos: var GameInfos) =
+    for b in infos.loadedRoom.bulletList:
+        if(b == nil): continue
+        if(b.bulletType < 0):
+            room.bulletList.remove(b)
+            continue
+        if(b.position.x > SCREEN_X or b.position.x < 0 or
+            b.position.y > SCREEN_Y or b.position.y < 0):
+            room.bulletList.remove(b)
+            continue
+
+        b.update(infos)
+
+
+    # for i in 0..<game.infos.loadedRoom.bulletList.list.len:
+    #     var b = game.infos.loadedRoom.bulletList[i]
+    #     if(b == nil): continue
+    #     if(b.bulletType < 0):
+    #         game.infos.loadedRoom.bulletList.remove(i)
+    #         continue
+    #     if(b.position.x > SCREEN_X or b.position.x < 0 or
+    #         b.position.y > SCREEN_Y or b.position.y < 0):
+    #         game.infos.loadedRoom.bulletList.remove(i)
+    #         continue
+    #     b.update(game.infos)
+
+proc update*(room: Room, infos: var GameInfos): void =
+    room.camera.update()
+    room.updatePlayers(infos)
+    room.updateBullets(infos)
 
 proc getDestroyableTiles(room: var Room): void =
     var buffer = initTable[VectorI64, bool]()
@@ -14,6 +52,11 @@ proc getDestroyableTiles(room: var Room): void =
             if tile.index.Collision == DESTROYABLE_TILE:
                 buffer[VectorI64(x: col.int, y: row.int)] = true
     room.destroyableTilesList = buffer
+
+proc setupMap*(room: var Room, path: string) =
+    room.collisions = loadTilemap(path, "collisions")
+    room.camera = Camera(position: VectorF64(x: 0, y: 0))
+    room.getDestroyableTiles()
 
 proc loadRoom*(path: string): Room =
     var room = Room()
@@ -35,11 +78,3 @@ proc loadRoom*(path: string): Room =
     #                 )
     #             )
     return room
-
-import math
-proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
-    # return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
-    return currentRoom.collisions.getTile((pos.y / 16).int, (pos.x / 16).int)
-
-method update(room: Room): void =
-    room.camera.update()

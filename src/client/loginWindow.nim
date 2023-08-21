@@ -2,6 +2,8 @@ import std/[times, os, tables, httpclient, asyncdispatch, strformat, strutils, a
 import imgui, imgui/[impl_opengl, impl_glfw]
 import nimgl/[opengl, glfw]
 import regex
+import ../common/credentials
+import libsodium/sodium
 
 var
     loginName = newString(16)
@@ -17,6 +19,10 @@ var
     registerNameAvaillable = true
     registerErrorPass = " "
     registerProblem = false
+    loginProblem = false
+    loginError = false
+    key = ""
+    isLogged = false
 
 proc checkNameAvaillability(client: AsyncHttpClient, name: string): Future[AsyncResponse] {.async.} =
   var a = await client.get(fmt"http://127.0.0.1/availlableName/{name.cstring}")
@@ -42,6 +48,12 @@ proc register(client: AsyncHttpClient): Future[AsyncResponse] {.async.} =
     var json = %* {"name": $(registerName.cstring), "password": $(registerPass.cstring)}
     echo $json
     var a = await client.post("http://127.0.0.1/register", $json)
+    return a
+
+proc login(client: AsyncHttpClient): Future[AsyncResponse] {.async.} =
+    var json = %* {"name": $(loginName.cstring), "password": $(loginPass.cstring)}
+    echo $json
+    var a = await client.post("http://127.0.0.1/login", $json)
     return a
 
 proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
@@ -114,6 +126,11 @@ proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =
     if(igButton("Exit##R")):
         quit()
 
+proc getLoginError(): string =
+    if(loginProblem): return "An error occured. Please try again."
+    if(loginError): return "Invalid name or password."
+    return ""
+
 proc drawLoginTab(client: AsyncHttpClient) {.inline, async.} =
     var loginNameStrC = loginName.cstring
     var loginPassStrC = loginPass.cstring
@@ -136,6 +153,7 @@ proc drawLoginTab(client: AsyncHttpClient) {.inline, async.} =
     # Display the errors.
     igText(loginErrorName.cstring)
     igText(loginErrorPass.cstring)
+    igText(getLoginError().cstring)
 
     # This is used to disable the button if there are errors.
     if(hasErrorsLogin):
@@ -143,7 +161,33 @@ proc drawLoginTab(client: AsyncHttpClient) {.inline, async.} =
         igPushItemFlag(ImGuiItemFlags.Disabled, hasErrorsLogin)
         igPushStyleVar(ImGuiStyleVar.Alpha, style.alpha * 0.5)
     if(igButton("Login")):
-        echo "Hello world!"
+        let l = client.login()
+        asyncfutures.addCallback(l,
+                proc (l: Future[AsyncResponse]) {.closure, gcsafe.} =
+                    try:
+                        var res = l.read()
+                        if(res.status.startsWith("401")):
+                            loginError = true
+                        elif(res.status.startsWith("500")):
+                            loginError = false
+                            loginProblem = true
+                            return
+                        elif(res.status.startsWith("200")):
+                            loginError = false
+                            {.cast(gcsafe).}:
+                                key = parseJson(res.body.read())["key"].getStr()
+                                echo key
+                            isLogged = true
+                        # {.cast(gcsafe).}:
+                        #     if(res.status.startsWith("200")):
+                        #         igSetTabItemClosed("Register")
+                        #         registerProblem = false
+                        #     else:
+                        #         registerProblem = true
+                        loginProblem = false
+                    except:
+                        loginProblem = true
+            )
     if(hasErrorsLogin):
         igPopItemFlag()
         igPopStyleVar()
@@ -191,7 +235,7 @@ proc drawWindow(window: GLFWWindow, client: AsyncHttpClient) {.inline, async.} =
     window.swapBuffers()
     glfwSwapInterval(1)
 
-proc openLoginWindow*(client: AsyncHttpClient) {.async.} = 
+proc openLoginWindow*(client: AsyncHttpClient): Future[CredentialsEncrypted] {.async.} = 
     doAssert glfwInit()
 
     glfwWindowHint(GLFWContextVersionMajor, 3)
@@ -219,7 +263,7 @@ proc openLoginWindow*(client: AsyncHttpClient) {.async.} =
     echo "hi"
     # context.
 
-    while not window.windowShouldClose:
+    while not isLogged:
         var a = window.drawWindow(client)
         drain(16)
         # Waits for completion of all events and processes them. Raises ValueError if there are no pending operations.
@@ -232,4 +276,6 @@ proc openLoginWindow*(client: AsyncHttpClient) {.async.} =
 
     window.destroyWindow()
     glfwTerminate()
-    return
+    # We already encrypt the password so we don't need to do it during game loop.
+    return CredentialsEncrypted(name: loginName, password: crypto_box_seal(loginPass, key))
+    

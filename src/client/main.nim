@@ -16,6 +16,7 @@ import tilengine/bitmapUtils
 import std/monotimes
 import std/[times, os, tables, httpclient, asyncdispatch, strformat]
 import loginWindow
+import ../common/credentials
 
 proc serializeInputs(): string =
   var input = (
@@ -64,11 +65,11 @@ proc switchTiles(map: Tilemap, switchOn: bool) =
 var switchState = true
 var needSwitching = false
 
-
+var creds: CredentialsEncrypted
 
 proc main() =
   var httpClient = newAsyncHttpClient()
-  waitFor openLoginWindow(httpClient)
+  creds = waitFor openLoginWindow(httpClient)
   # waitFor startAuthWindow(httpClient)
   cam = Camera()
   var e = init(SCREEN_X, SCREEN_Y, 3, 128, 64)

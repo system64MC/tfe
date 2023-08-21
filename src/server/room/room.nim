@@ -25,6 +25,16 @@ type
     TILE_SWITCH_ON
     TILE_SWITCH_OFF
 
+proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
+    # return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
+    return currentRoom.collisions.getTile((pos.y / 16).int, (pos.x / 16).int)
+
+proc `[]`*(currentRoom: Room; x: int, y: int): Tile =
+    return currentRoom.collisions.getTile((x shr 4).int, (y shr 4).int)
+
+proc `[]`*(currentRoom: Room; x: float, y: float): Tile =
+    return currentRoom.collisions.getTile((x / 16).int, (y / 16).int)
+
     # for p in room.playerList:
     #     p.update()
     
