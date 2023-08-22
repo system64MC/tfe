@@ -1,3 +1,3 @@
 cd client
-nimble build
+nimble build --passL:"C:\Users\nicol\Documents\programmation\TFE\libs\ksnd.dll" 
 cd ..
