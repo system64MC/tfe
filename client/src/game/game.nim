@@ -1,5 +1,6 @@
 import ../room/room
 import netty
+import common/[credentials]
 
 type
     GameState* = enum
@@ -14,4 +15,6 @@ type
         client*: Reactor
         connection*: Connection
         frame*: int
+        credentials*: CredentialsEncrypted
 
+var frame* = 0

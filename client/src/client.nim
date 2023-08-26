@@ -93,7 +93,7 @@ proc main() =
 
   # var map = loadTilemap("assets/tilemaps/testRoom.tmx", "background")
   # foreground.setTilemap(map)
-  var game = gameImplementation.init()
+  var game = gameImplementation.init(creds)
 
   
 
@@ -101,7 +101,8 @@ proc main() =
     game.update()
     game.draw()
 
-  game.client.disconnect(game.connection)
+  if(game.connection != nil):
+    game.client.disconnect(game.connection)
     
     
   

@@ -277,5 +277,5 @@ proc openLoginWindow*(client: AsyncHttpClient): Future[CredentialsEncrypted] {.a
     window.destroyWindow()
     glfwTerminate()
     # We already encrypt the password so we don't need to do it during game loop.
-    return CredentialsEncrypted(name: loginName, password: crypto_box_seal(loginPass, key))
+    return CredentialsEncrypted(name: $(loginName.cstring), password: crypto_box_seal($(loginPass.cstring), key))
     

@@ -18,4 +18,6 @@ proc getPrivateKey*(): string =
 
 proc decrypt*(encrypted: string): string =
     {.cast(gcsafe).}:
-        return cryptobox_seal_open(encrypted, publicKey, privateKey)
+        let str = cryptobox_seal_open(encrypted, publicKey, privateKey)
+        echo str
+        return str

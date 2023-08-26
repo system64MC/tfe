@@ -1,5 +1,5 @@
 import tilengine/[tilengine, bitmapUtils]
-import common/[constants, message, events, serializedObjects, vectors]
+import common/[constants, message, events, serializedObjects, vectors, credentials]
 import ../music/music
 import game
 import ../room/[room, roomImplementation]
@@ -9,10 +9,11 @@ import std/[times, tables]
 import supersnappy
 # import background
 
-proc init*(): Game =
+proc init*(credentials: CredentialsEncrypted): Game =
     discard init(SCREEN_X, SCREEN_Y, 4, 512, 64)
     initMusic(44100)
     var game = Game()
+    game.credentials = credentials
     game.room = Room() # create base object
     game.room.kind = RoomKind.ROOM_TITLE
     game.room.init("./assets/musics/magica.kt") # Execute init method on base object
@@ -41,7 +42,7 @@ proc unserializeRoom(data: string): RoomSerialize =
 
 proc fetchMessages*(game: Game) =
     game.client.tick()
-    if(game.connection != nil):
+    if(game.connection != nil and game.room.kind != ROOM_TITLE):
         game.client.send(game.connection, toFlatty(message.Message(header: EVENT_INPUT, data: serializeInputs())))
     for msg in game.client.messages:
         let myMsg = fromFlatty(msg.data, message.Message)
@@ -85,4 +86,5 @@ proc draw*(game: Game) =
     game.room.draw()
     drawFrame()
     game.frame.inc
+    frame.inc
     return

@@ -1,27 +1,22 @@
 import std/[times, os]
 import ./actors/implementations/player
-import ./actors/implementations/bullet
 import ./actors/bulletList
 import common/[vectors, message, events, constants]
-import camera
 import room/[room, roomImplementation]
 import netty
 import flatty
-import std/threadpool
-import tilengine/tilengine
-import math
 import gameInfos
 import ./actors/actors
-import std/monotimes
 import std/tables
-import std/strformat
-import std/os
-import strutils
+import database/orm/models
 
 type
     GameInstance* = ref object
         infos*: GameInfos
         server*: Reactor
+        game*: GameORM
+        master*: UserORM
+        players*: array[4, PlayerORM]
 
 proc fetchMessages*(game: GameInstance) {.gcsafe.} =
     for msg in game.server.messages:
@@ -109,3 +104,10 @@ proc bootGameInstance*() {.thread.} =
         game.checkNewDeadConnections()
 
         game.endTick()
+
+proc newGameInstance*(port: Port, master: UserORM, code: string): GameInstance =
+    var instance = GameInstance()
+    instance.master = master
+    instance.server = newReactor("127.0.0.1", port.int)
+    instance.game = newGame(master, code)
+    return instance

@@ -5,6 +5,7 @@ import database/orm/models
 import norm/[model, sqlite]
 import database/db
 import crypto
+import instanceManager
 
 var timeStart* = 0.0
 var timeFinish* = 0.0
@@ -18,8 +19,10 @@ proc main2(): void =
   seedDb()
   var th: Thread[void]
   var webServer: Thread[void]
-  createThread(th, bootGameInstance)
+  var instanceMan: Thread[void]
   createThread(webServer, bootApi)
+  createThread(instanceMan, bootInstanceManager)
+  createThread(th, bootGameInstance)
   while true:
     continue
   

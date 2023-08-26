@@ -1,11 +1,13 @@
 import room
 import tilengine/[tilengine, bitmapUtils]
-import common/[constants, serializedObjects, commonActors, vectors]
+import common/[constants, serializedObjects, commonActors, vectors, message]
 import background
 import ../music/music
 import ../game/game
 import netty
 import ../drawing
+import ../rasterEffects
+import flatty
 
 proc init*(room: Room, musicPath: string = "") =
     # We free the tilemaps to avoid memory leaks...
@@ -17,6 +19,7 @@ proc init*(room: Room, musicPath: string = "") =
             camera: Camera(position: VectorF64(x: 0, y: 0)),
             playerList: [PlayerSerialize(), nil, nil, nil]
         )
+    setRasterCallback(nil)
     if(room.bitmap == nil):
         room.bitmap = createBitmap(SCREEN_X, SCREEN_Y, 8)
         room.bitmap.setPalette(createPalette(16))
@@ -28,13 +31,22 @@ proc init*(room: Room, musicPath: string = "") =
     case room.kind:
     of ROOM_TITLE:
         Sprite(0).setSpriteSet(sprites[SpriteTypes.CURSOR.int])
+        room.layers[2] = createBackground("./assets/tilemaps/floor.tmx")
         room.layers[1] = createBackground("./assets/tilemaps/titlescreen.tmx")
+        Layer(2).setTilemap(room.layers[2].layer)
         Layer(1).setTilemap(room.layers[1].layer)
+        setRasterCallback(titleScreenRasterEffect)
     of ROOM_LEVEL:
         Sprite(1).setSpriteSet(sprites[SpriteTypes.PLAYER.int])
         room.layers[1] = createBackground("./assets/tilemaps/testRoom.tmx", "background")
         Layer(1).setTilemap(room.layers[1].layer)
         discard
+    of ROOM_HUB:
+        room.layers[1] = createBackground("./assets/tilemaps/charSelect.tmx", "frames")
+        room.layers[2] = createBackground("./assets/tilemaps/charSelect.tmx", "circle")
+        Layer(1).setTilemap(room.layers[1].layer)
+        Layer(2).setTilemap(room.layers[2].layer)
+        setRasterCallback(selectScreenRasterEffect)
     else:
         discard
     if(musicPath != ""): startMusic(musicPath)
@@ -58,6 +70,10 @@ proc updateTitleScreen(room: Room, game: Game) =
             echo "Join game..."
         of CREATE_GAME:
             echo "Create new game..."
+            game.connection = game.client.connect("127.0.0.1", 51730)
+            game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.ENCRYPTED_CREDENTIALS_DATA, data: toFlatty(game.credentials))))
+            # game.room.kind = ROOM_HUB
+            # game.room.init("./assets/musics/select.kt")
         of SCORES:
             echo "Scores list..."
         of MUSIC_ROOM:
@@ -130,6 +146,10 @@ proc drawMusicRoom(room: Room) =
     return
 
 proc drawHub(room: Room) =
+    setBgColor(0, 0, 0)
+    Layer(2).setPosition(256 - (SCREEN_X shr 1), 256 - (SCREEN_Y shr 1))
+    Layer(2).setTransform(frame.float / 2, SCREEN_X / 2, SCREEN_Y / 2, 0.5, 0.5)
+    Layer(1).setBlendMode(BlendSub, 255)
     return
 
 proc drawScoreScreen(room: Room) =
@@ -143,6 +163,8 @@ proc draw*(room: Room) =
         room.drawTitleScreen()
     of ROOM_LEVEL:
         room.drawLevel()
+    of ROOM_HUB:
+        room.drawHub()
     else:
         discard
     return
