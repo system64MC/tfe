@@ -12,7 +12,7 @@ bin           = @["client"]
 # Dependencies
 
 requires "nim >= 2.0.0"
-requires "file:///C:/Users/nicol/Documents/programmation/tfeTest/common"
+requires "file:///C:/Users/nicol/Documents/programmation/TFE/common"
 requires "flatty"
 requires "netty"
 requires "libsodium"
@@ -20,4 +20,5 @@ requires "https://github.com/system64MC/nim-tilengine"
 requires "supersnappy"
 requires "regex"
 requires "nimgl"
-requires "imgui"
+requires "https://github.com/nimgl/imgui"
+requires "tinydialogs"

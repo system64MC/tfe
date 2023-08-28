@@ -15,6 +15,10 @@ type
         ROOM_SCORE,
         ROOM_MUSIC
 
+    RoomState* = enum
+        NONE
+        WAITING_HUB_TRANSFER
+
     Room* = ref object
         kind*: RoomKind
         layers*: array[NUM_BACKGRONDS, Background]
@@ -22,9 +26,11 @@ type
         # objList*: Tlnobjectlist
         music*: string
         data*: RoomSerialize
+        hubData*: HubSerialize
         cursor*: Cursor
         needSwitching*: bool
         switchState*: bool
+        state*: RoomState
 
     TitleChoices* = enum
         JOIN_GAME,

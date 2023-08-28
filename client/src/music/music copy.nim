@@ -12,22 +12,17 @@ proc initMusic*(freq: uint): void =
 
 proc startMusic*(path: string): void =
     var path2 = path.cstring
-    if (song != nil):
-      Ksndstop(player)
-      Ksndfreesong(song)
-      # TODO : This is a temporary fix to avoid a segfault. I hope
-      # I would be able to fix it in the future.
-      Ksndfreeplayer(player)
-      player = Ksndcreateplayer(44100)
-      song = nil
-    song = KSND_LoadSong(player, path2)
-    echo "passed here..."
-    if(song == nil):
+    var song2 = KSND_LoadSong(player, path2)
+    if(song2 == nil):
           echo("Error while loading song! Please check the path to the file")
           return
 
+    if not(song == nil):
+      Ksndstop(player)
+      Ksndfreesong(song)
       #Ksndfreeplayer(player)
       #initMusic(44100)
+    song = song2
 
     #echo "song is nil"
     KSND_PlaySong(player, song, 0)

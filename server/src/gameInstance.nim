@@ -1,13 +1,15 @@
-import std/[times, os]
+import std/[times, os, tables, sets, options, strutils]
 import ./actors/implementations/player
 import ./actors/bulletList
-import common/[vectors, message, events, constants]
+import common/[vectors, message, events, constants, credentials]
 import room/[room, roomImplementation]
 import netty
 import flatty
 import gameInfos
 import ./actors/actors
-import std/tables
+import database/orm/models
+import hub/[hub, hubImplementation]
+import crypto
 import database/orm/models
 
 type
@@ -15,12 +17,71 @@ type
         infos*: GameInfos
         server*: Reactor
         game*: GameORM
-        master*: UserORM
+        master*: PlayerORM
         players*: array[4, PlayerORM]
+        connectionsToVerify: HashSet[Address]
+
+var chan*: Channel[string]
+chan.open()
+
+proc hasFreeSlots(hub: Hub): int =
+    for i in 0..<hub.playerList.len:
+        let p = hub.playerList[i]
+        if(p == nil): return i
+    return -1
+
+proc `==`(a, b: Port): bool {.borrow.}
+proc authenticate(instance: GameInstance, msg: netty.Message): bool {.gcsafe.} =
+    let mess = fromFlatty(msg.data, message.Message)
+    echo "address : ", msg.conn.address
+    if(instance.connectionsToVerify.contains(msg.conn.address)):
+        let slot = instance.infos.hub.hasFreeSlots()
+        if slot < 0:
+            instance.server.send(msg.conn, toFlatty(message.Message(header: ERROR_FULL, data: "")))
+            instance.connectionsToVerify.excl(msg.conn.address)
+            return false
+        echo "header : ", mess.header
+        echo "Checking connection"
+        if(mess.header != ENCRYPTED_CREDENTIALS_DATA or mess.data == ""):
+            instance.server.send(msg.conn, toFlatty(message.Message(header: ERROR_AUTH, data: "")))
+            instance.connectionsToVerify.excl(msg.conn.address)
+            # instance.server.kick(msg.conn)
+            echo "Connection not OK 1"
+            return false
+        else:
+            let credentials = fromFlatty(mess.data, CredentialsEncrypted)
+            let user = getUserByNameAndPassword($(credentials.name.cstring), $(decrypt(credentials.password).cstring))
+
+            if user.isNone:
+                instance.server.send(msg.conn, toFlatty(message.Message(header: ERROR_AUTH, data: "")))
+                instance.connectionsToVerify.excl(msg.conn.address)
+                # instance.server.kick(msg.conn)
+                echo "Connection not OK 2"
+                return false
+        
+            if(user.get().pseudo == instance.master.user.pseudo):
+                instance.infos.master.address = some(msg.conn.address)
+            else:
+                instance.infos.hub.playerList[slot] = Player(name: user.get().pseudo, address: some(msg.conn.address))
+            instance.server.send(msg.conn, toFlatty(message.Message(header: OK_JOIN_HUB, data: "")))
+            instance.connectionsToVerify.excl(msg.conn.address)
+        echo "Connection OK"
+    return true
+
+proc findPlayerByAddress(playerList: array[4, Player], address: Address): Player =
+    for p in playerList:
+        if p == nil: continue
+        if p.address.get == address: return p
+    return nil
 
 proc fetchMessages*(game: GameInstance) {.gcsafe.} =
     for msg in game.server.messages:
+        if not game.authenticate(msg): continue
         let data = fromFlatty(msg.data, message.Message)
+        if(data.header == MessageHeader.EVENT_SELECT_CHAR):
+            if(game.infos.state != GameState.HUB): continue
+            var p = findPlayerByAddress(game.infos.hub.playerList, msg.conn.address)
+            if p != nil: game.infos.hub.assignCharacter(p, data.data.parseInt())
         if(data.header == MessageHeader.EVENT_INPUT):
             let e = fromFlatty(data.data, events.EventInput)
             game.infos.loadedRoom.playerList[0].input = game.infos.loadedRoom.playerList[0].input or e.input
@@ -36,16 +97,28 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
 
 proc update*(game: GameInstance): void {.gcsafe.} =
     game.infos.eventList.setLen(0)
-    game.infos.loadedRoom.update(game.infos)
+    case game.infos.state:
+    of HUB:
+        game.infos.hub.update()
+    of LEVEL:
+        game.infos.loadedRoom.update(game.infos)
+    else: discard
 
 import supersnappy
 proc serialize*(game: GameInstance): void {.gcsafe.} =
-    let d = compress(game.infos.loadedRoom.serialize())
-    let roomData = toFlatty(message.Message(header: MessageHeader.ROOM_DATA, data: d))
+    if(game.infos.state == LEVEL):
+        let d = compress(game.infos.loadedRoom.serialize())
+        let roomData = toFlatty(message.Message(header: MessageHeader.ROOM_DATA, data: d))
 
-    # Sending data to the server.
-    for connection in game.server.connections:
-        game.server.send(connection, roomData)
+        # Sending data to the server.
+        for connection in game.server.connections:
+            game.server.send(connection, roomData)
+    elif(game.infos.state == GameState.HUB):
+        let h = compress(game.infos.hub.serialize())
+        let hubData = toFlatty(message.Message(header: MessageHeader.HUB_DATA, data: h))
+        # Sending data to the server.
+        for connection in game.server.connections:
+            game.server.send(connection, hubData)
 
     # Sending events to the server.
     for e in game.infos.eventList:
@@ -62,21 +135,23 @@ proc init*(game: GameInstance): void =
     # We load the test room.
     game.infos.loadedRoom.setupMap("/assets/tilemaps/testRoom.tmx")
 
-    # Creating the server, listening on the ELIS port (Port 5173)
-    game.server = newReactor("127.0.0.1", 5173)
+    
     echo "Server booted! Listening for 📦 packets! 📦"
 
 proc checkNewDeadConnections(game: GameInstance): void {.gcsafe.} =
     for connection in game.server.newConnections:
-        game.server.send(connection, toFlatty(message.Message(header: DESTROYABLE_TILES_DATA, data: toFlatty(game.infos.loadedRoom.destroyableTilesList))))
-        let switchEvent = EventSwitch(state: game.infos.loadedRoom.switchOn)
-        let m = message.Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
-        game.server.send(connection, toFlatty(m))
+        game.connectionsToVerify.incl(connection.address)
+        echo game.connectionsToVerify
+        # game.server.send(connection, toFlatty(message.Message(header: DESTROYABLE_TILES_DATA, data: toFlatty(game.infos.loadedRoom.destroyableTilesList))))
+        # let switchEvent = EventSwitch(state: game.infos.loadedRoom.switchOn)
+        # let m = message.Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
+        # game.server.send(connection, toFlatty(m))
         echo "[new] ", connection.address
         echo "[SERVER : ]", game.server.address
 
     for connection in game.server.deadConnections:
         echo "[dead] ", connection.address
+        if(game.infos.state == GameState.HUB): game.infos.hub.onDisconnect(connection.address, game.infos)
 
 proc beginTick(game: GameInstance) =
     game.server.tick()
@@ -90,24 +165,52 @@ proc endTick(game: GameInstance) =
     if(game.infos.delta < TPS_DELAY):
         sleep((TPS_DELAY - game.infos.delta).int)
 
+proc notifyDeadServer*(game: GameInstance) =
+    for c in game.server.connections:
+        game.server.send(c, toFlatty(message.Message(header: EVENT_SERVER_DEAD, data: "")))
+    game.server.tick()
+
 proc bootGameInstance*() {.thread.} =
     var game = GameInstance()
+    # Creating the server, listening on the ELIS port (Port 5173)
+    game.server = newReactor("127.0.0.1", 5173)
     game.init()
 
     # Main game loop
     while true:
         game.beginTick()
 
+        game.checkNewDeadConnections()
         game.fetchMessages()
         game.update()
         game.serialize()
-        game.checkNewDeadConnections()
 
         game.endTick()
 
+proc bootGameInstance2*(game: GameInstance) {.thread.} =
+    game.init()
+
+    # Main game loop
+    while game.infos.state != DEAD_GAME:
+        game.beginTick()
+
+        game.checkNewDeadConnections()
+        game.fetchMessages()
+        game.update()
+        if(game.infos.state == DEAD_GAME): game.notifyDeadServer()
+        game.serialize()
+        game.endTick()
+    echo "closing server"
+    chan.send(game.game.code)
+
 proc newGameInstance*(port: Port, master: UserORM, code: string): GameInstance =
     var instance = GameInstance()
-    instance.master = master
-    instance.server = newReactor("127.0.0.1", port.int)
+    instance.infos.hub = hub.Hub()
     instance.game = newGame(master, code)
+    instance.master = newPlayer(master, instance.game)
+    instance.players[0] = instance.master
+    instance.infos.master = Player()
+    instance.infos.master.name = master.pseudo
+    instance.infos.hub.playerList[0] = instance.infos.master
+    instance.server = newReactor("127.0.0.1", port.int)
     return instance

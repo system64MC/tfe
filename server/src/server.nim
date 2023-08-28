@@ -22,7 +22,7 @@ proc main2(): void =
   var instanceMan: Thread[void]
   createThread(webServer, bootApi)
   createThread(instanceMan, bootInstanceManager)
-  createThread(th, bootGameInstance)
+  # createThread(th, bootGameInstance)
   while true:
     continue
   

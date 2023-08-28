@@ -12,7 +12,7 @@ bin           = @["server"]
 # Dependencies
 
 requires "nim >= 2.0.0"
-requires "file:///C:/Users/nicol/Documents/programmation/tfeTest/common"
+requires "file:///C:/Users/nicol/Documents/programmation/TFE/common"
 requires "flatty"
 requires "netty"
 requires "libsodium"

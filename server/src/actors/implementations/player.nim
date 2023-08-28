@@ -27,7 +27,7 @@ var playerInput*: uint8 = 0b0000_0000 # Input of player.
 #         character*: uint8
 #         lifes*: uint8
 
-proc constructPlayer*(position: VectorF64, character: uint8, lifes: uint8): actors.Player =
+proc constructPlayer*(position: VectorF64, character: int8, lifes: uint8): actors.Player =
     var player = actors.Player()
     player.position = position
     player.character = character
@@ -424,5 +424,6 @@ method serialize*(player: actors.Player): PlayerSerialize =
     p.velY = player.velY
     p.lifes = player.lifes
     p.character = player.character
+    p.name = player.name
     return p
     # return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))

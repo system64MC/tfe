@@ -5,8 +5,9 @@ import game
 import ../room/[room, roomImplementation]
 import netty
 import flatty
-import std/[times, tables]
+import std/[times, tables, strutils, strformat]
 import supersnappy
+import tinydialogs
 # import background
 
 proc init*(credentials: CredentialsEncrypted): Game =
@@ -20,6 +21,7 @@ proc init*(credentials: CredentialsEncrypted): Game =
     
     setTargetFps(120)
     createWindow(flags = {cwfNoVsync})
+    setWindowTitle(fmt"Magica Online ~ {credentials.name}")
     game.client = newReactor()
     return game
 
@@ -36,13 +38,16 @@ proc serializeInputs(): string =
     return toFlatty(EventInput(input: input, sentAt: getTime().toUnixFloat()))
 
 proc unserializeRoom(data: string): RoomSerialize =
-    # echo data.len
     let r = fromFlatty(uncompress(data), RoomSerialize)
     return r
 
+proc unserializeHub(data: string): HubSerialize =
+    let h = fromFlatty(uncompress(data), HubSerialize)
+    return h
+
 proc fetchMessages*(game: Game) =
     game.client.tick()
-    if(game.connection != nil and game.room.kind != ROOM_TITLE):
+    if(game.connection != nil and game.room.kind == ROOM_LEVEL):
         game.client.send(game.connection, toFlatty(message.Message(header: EVENT_INPUT, data: serializeInputs())))
     for msg in game.client.messages:
         let myMsg = fromFlatty(msg.data, message.Message)
@@ -67,6 +72,27 @@ proc fetchMessages*(game: Game) =
                     var tile = game.room.layers[1].layer.getTile(coordinates.y, coordinates.x)
                     tile.index = 1
                     game.room.layers[1].layer.setTile(coordinates.y, coordinates.x, tile)
+        of MessageHeader.OK_JOIN_SERVER:
+            let port = myMsg.data.parseInt()
+            game.client.disconnect(game.connection)
+            game.connection = game.client.connect("127.0.0.1", port)
+            game.client.send(game.connection, toFlatty(message.Message(header: ENCRYPTED_CREDENTIALS_DATA, data: toFlatty(game.credentials))))
+        of MessageHeader.OK_JOIN_HUB:
+            echo "Welcome to hub"
+            game.room.kind = ROOM_HUB
+            game.room.state = NONE
+            game.room.init("./assets/musics/select.kt")
+        of MessageHeader.ERROR_CREATE_GAME:
+            game.client.disconnect(game.connection)
+            # TODO : Display error message window
+        of MessageHeader.EVENT_SERVER_DEAD:
+            game.client.disconnect(game.connection)
+            game.room.kind = ROOM_TITLE
+            game.room.state = NONE
+            game.room.init("./assets/musics/magica.kt")
+            var a = messageBox("Warning", "You got disconnected because the Master left the game", DialogType.Ok, IconType.Warning, Button.Yes)
+        of MessageHeader.HUB_DATA:
+            game.room.hubData = unserializeHub(myMsg.data)
         else:
             continue
 
@@ -83,7 +109,7 @@ proc update*(game: Game) =
 
 proc draw*(game: Game) =
     game.room.bitmap.clearBitmap()
-    game.room.draw()
+    game.room.draw(game)
     drawFrame()
     game.frame.inc
     frame.inc

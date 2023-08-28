@@ -11,11 +11,13 @@ method draw*(actor: Actor, bitmap: Bitmap): void {.base.} =
 type
     SpriteTypes* = enum
         CURSOR,
-        PLAYER
+        PLAYER,
+        CHARACTERS
 
 var sprites*: array[256, Spriteset]
 sprites[0] = loadSpriteset("./assets/sprites/cursor.png")
 sprites[1] = loadSpriteset("./assets/sprites/player.png")
+sprites[2] = loadSpriteset("./assets/sprites/characters.png")
 
 proc draw*(player: PlayerSerialize, bitmap: Bitmap): void =
     bitmap.drawRectWH(player.position.x.int, player.position.y.int, player.hitbox.size.x.int, 1, 0, 0, 1)
