@@ -93,6 +93,13 @@ proc fetchMessages*(game: Game) =
             var a = messageBox("Warning", "You got disconnected because the Master left the game", DialogType.Ok, IconType.Warning, Button.Yes)
         of MessageHeader.HUB_DATA:
             game.room.hubData = unserializeHub(myMsg.data)
+        of MessageHeader.ERROR_FULL:
+            var a = messageBox("Error!", "The game is full!", DialogType.Ok, IconType.Error, Button.Yes)
+            game.room.state = NONE
+        of MessageHeader.EVENT_LOAD_LEVEL:
+            game.room.kind = ROOM_LEVEL
+            game.room.state = NONE
+            game.room.init(level = myMsg.data.parseInt())
         else:
             continue
 

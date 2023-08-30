@@ -16,8 +16,9 @@ type
         ROOM_MUSIC
 
     RoomState* = enum
-        NONE
-        WAITING_HUB_TRANSFER
+        NONE,
+        WAITING_HUB_TRANSFER,
+        CHARACTER_SELECTED
 
     Room* = ref object
         kind*: RoomKind

@@ -23,13 +23,16 @@ proc createBackground*(path: string, layerName: string = "layer", scrollMullts: 
 
 
 
-var bitmap*:Bitmap
-var bitmapLayer* = Layer(2)
 
-proc initBitmapLayer*(): void =
-    bitmap = createBitmap(SCREEN_X, SCREEN_Y, 8)
-    bitmap.setPalette(createPalette(16))
-    bitmap.getPalette().setColor(1, 255, 0, 0)
-    bitmapLayer.setBitmap(bitmap)
-    bitmapLayer.setPosition(0, 0)
-    bitmapLayer.setPriority(true)
+
+# var bitmap*:Bitmap
+# var bitmapLayer* = Layer(2)
+
+# proc initBitmapLayer*(): void =
+#     bitmap = createBitmap(SCREEN_X, SCREEN_Y, 8)
+#     bitmap.setPalette(createPalette(16))
+#     bitmap.getPalette().setColor(1, 255, 0, 0)
+#     bitmap.getPalette().setColor(2, 255, 255, 255)
+#     bitmapLayer.setBitmap(bitmap)
+#     bitmapLayer.setPosition(0, 0)
+#     bitmapLayer.setPriority(true)

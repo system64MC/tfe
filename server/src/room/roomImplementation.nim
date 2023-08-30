@@ -7,6 +7,9 @@ import ../actors/implementations/[player, bullet]
 import tilengine/tilengine
 import std/tables
 import ../gameInfos
+import netty
+import std/[options, json, strformat]
+import ../ipComp
 
 proc updatePlayers(room: Room, infos: var GameInfos) =
     for p in room.playerList:
@@ -53,9 +56,11 @@ proc getDestroyableTiles(room: var Room): void =
                 buffer[VectorI64(x: col.int, y: row.int)] = true
     room.destroyableTilesList = buffer
 
-proc setupMap*(room: var Room, path: string) =
-    echo path
-    room.collisions = loadTilemap(path, "collisions")
+proc setupMap*(room: var Room, level: int) =
+    let json = readFile(fmt"./assets/levels/{level}.json")
+    let jNode = parseJson(json)
+    let tmxPath = jNode["tilemap"].getStr()
+    room.collisions = loadTilemap(tmxPath, "collisions")
     room.camera = Camera(position: VectorF64(x: 0, y: 0))
     room.getDestroyableTiles()
 
@@ -80,6 +85,18 @@ proc loadRoom*(path: string): Room =
     #             )
     return room
 
+proc onDisconnect*(room: Room, address: Address, infos: var GameInfos) =
+    if infos.master.address.get == address:
+        infos.state = DEAD_GAME
+
+    for p in room.playerList:
+        if p == nil: continue
+        if p.address.isNone: continue
+        if address == p.address.get():
+            p.address = none(Address)
+            p.state = PLAYER_DISCONNETED
+            break
+
 proc serializePlayers(room: Room): array[4, PlayerSerialize] =
     var arr: array[4, PlayerSerialize]
     for i in 0..<room.playerList.len:
@@ -89,6 +106,7 @@ proc serializePlayers(room: Room): array[4, PlayerSerialize] =
     return arr
 
 import flatty
+
 proc serialize*(room: Room): string =
     var r = RoomSerialize(
         camera: room.camera,

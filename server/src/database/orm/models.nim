@@ -31,11 +31,15 @@ type
         # The user that controls this player
         user*: UserORM
         # Number of lifes left
-        lifes*: int
+        lifes*: int = 5
         # Player's score
-        score*: int
+        score*: int = 0
+        # Powerup
+        powerup*: uint8 = 0
+        # Bombs
+        bombs*: uint8 = 3
         # The character that player controls.
-        character*: int
+        character*: int8
         # The game the player is in
         game*: GameORM
 

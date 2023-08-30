@@ -31,7 +31,7 @@ type
         # Which bonus the player has
         powerUp*: Powerup
         # How many bombs the player has
-        bombs*: byte
+        bombs*: byte = 3
         state*: PlayerState
         address*: Option[Address] = none(Address)
         name*: string

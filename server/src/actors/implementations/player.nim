@@ -425,5 +425,6 @@ method serialize*(player: actors.Player): PlayerSerialize =
     p.lifes = player.lifes
     p.character = player.character
     p.name = player.name
+    p.state = player.state
     return p
     # return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))

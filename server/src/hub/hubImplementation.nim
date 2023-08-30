@@ -5,10 +5,9 @@ import ../actors/implementations/player
 import netty
 import std/options
 import ../gameInfos
+import ../database/orm/models
+import ../ipComp
 
-proc `==`*(a, b: Port): bool {.borrow.}
-proc `==`*(address1, address2: Address): bool =
-    return ((address1.host == address2.host) and (address1.port == address2.port))
 
 proc update*(hub: Hub) =
     return
@@ -20,13 +19,15 @@ proc assignCharacter*(hub: Hub, player: Player, character: int) =
 proc selectCharacter*(hub: Hub, player: Player) =
     var isAvaillable = true
     for p in hub.playerList:
+        if(p == nil): continue
+        if(player.name == p.name): continue
         if(player.character == p.character and p.state == CHAR_SELECTED):
             isAvaillable = false
             break
 
     if(isAvaillable): player.state = CHAR_SELECTED
 
-proc onDisconnect*(hub: Hub, address: Address, infos: var GameInfos) =
+proc onDisconnect*(hub: Hub, address: Address, infos: var GameInfos, list: var array[4, PlayerORM]) =
     if infos.master.address.get == address:
         infos.state = DEAD_GAME
 
@@ -47,8 +48,9 @@ proc serializePlayers(hub: Hub): array[4, PlayerSerialize] =
     return arr
 
 import flatty
-proc serialize*(hub: Hub): string =
+proc serialize*(hub: Hub, code: string): string =
     var h = HubSerialize(
-        playerList: hub.serializePlayers()
+        playerList: hub.serializePlayers(),
+        code: code
     )
     return toFlatty(h)

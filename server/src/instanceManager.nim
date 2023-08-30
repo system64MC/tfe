@@ -5,6 +5,7 @@ import database/orm/models
 import common/[message, credentials]
 import flatty
 import crypto
+import ipComp
 
 type
     InstanceMan = ref object
@@ -16,7 +17,6 @@ type
 
 # var threadList: array[256, Thread[GameInstance]]
 
-proc `==`(a, b: Port): bool {.borrow.}
 
 import random
 proc randomStr(): string =

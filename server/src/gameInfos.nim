@@ -6,9 +6,10 @@ import std/lists
 
 type
     GameState* = enum
-        HUB
-        LEVEL
-        DEAD_GAME
+        HUB,
+        LEVEL,
+        DEAD_GAME,
+        WAIT_READY,
 
     GameInfos* = object
         eventList*: seq[message.Message]

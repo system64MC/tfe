@@ -1,0 +1,5 @@
+{
+    "tilemap": "./assets/tilemaps/testRoom.tmx",
+    "music": "./assets/musics/goddess.kt",
+    "background_color": "#87CEEB"
+}

@@ -7,6 +7,17 @@ import nimcrypto/pbkdf2
 
 const DBNAME = "game.db"
 
+proc insertPlayers*(players: var array[4, PlayerORM], game: var GameORM) = 
+    echo "saving to DB"
+    echo game == nil
+    withDbConn(con):
+        con.insert(game)
+        for i in 0..<players.len:
+            var p = players[i]
+            if(p != nil): con.insert(p)
+            players[i] = p
+    echo "saved"
+
 proc seedDb*(): void =
     removeFile(DBNAME)
     initConnectionPool(DBNAME, 20)

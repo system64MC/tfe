@@ -9,22 +9,45 @@ import ../drawing
 import ../rasterEffects
 import flatty
 import tinydialogs
+import json
+import strformat
 
-proc init*(room: Room, musicPath: string = "") =
+proc loadLevel*(room: Room, level: int) {.inline.} =
+    let json = readFile(fmt"./assets/levels/{level}.json")
+    let jNode = parseJson(json)
+    let tmxPath = jNode["tilemap"].getStr()
+    let musicPath = jNode["music"].getStr()
+    room.layers[1] = createBackground(tmxPath, "background")
+    Layer(1).setTilemap(room.layers[1].layer)
+    if(musicPath != ""): startMusic(musicPath)
+    return
+
+proc init*(room: Room, musicPath: string = "", level: int = 0) =
+    setRasterCallback(nil)
     # We free the tilemaps to avoid memory leaks...
-    for i in 0..<room.layers.len:
-        if(room.layers[i].layer != nil):
-            room.layers[i].layer.delete
-            room.layers[i].layer = nil
+    # TODO : Temporary disabled because investigating a segfault.
+    # for i in 0..<room.layers.len:
+    #     try:
+    #         if(Layer(i).getTilemap != nil):
+    #             Layer(i).getTilemap.delete
+    #             # room.layers[i].layer = nil
+    #     except:
+    #         discard
+
+        # if(room.layers[i].layer != nil):
+        #     room.layers[i].layer.delete
+        #     room.layers[i].layer = nil
+
     room.data = RoomSerialize(
             camera: Camera(position: VectorF64(x: 0, y: 0)),
             playerList: [PlayerSerialize(), nil, nil, nil]
         )
-    setRasterCallback(nil)
     if(room.bitmap == nil):
         room.bitmap = createBitmap(SCREEN_X, SCREEN_Y, 8)
         room.bitmap.setPalette(createPalette(16))
         room.bitmap.getPalette().setColor(1, 255, 0, 0)
+        room.bitmap.getPalette().setColor(2, 255, 255, 255)
+        room.bitmap.getPalette().setColor(3, 0, 255, 0)
         Layer(3).setBitmap(room.bitmap)
         Layer(3).setPriority(true)
     for i in 0..<512:
@@ -39,10 +62,22 @@ proc init*(room: Room, musicPath: string = "") =
         setRasterCallback(titleScreenRasterEffect)
         room.cursor.position = 0
     of ROOM_LEVEL:
-        Sprite(1).setSpriteSet(sprites[SpriteTypes.PLAYER.int])
+        # Sprite(1).setSpriteSet(sprites[SpriteTypes.PLAYER.int])
+        # room.layers[1] = createBackground("./assets/tilemaps/testRoom.tmx", "background")
+        # Layer(1).setTilemap(room.layers[1].layer)
+        # room.loadLevel(level)
+        let json = readFile(fmt"./assets/levels/{level}.json")
+        let jNode = parseJson(json)
+        let tmxPath = jNode["tilemap"].getStr()
+        let musicPath = jNode["music"].getStr()
+        # room.layers[1] = createBackground(tmxPath, "background")
+        Layer(2).disable()
         room.layers[1] = createBackground("./assets/tilemaps/testRoom.tmx", "background")
         Layer(1).setTilemap(room.layers[1].layer)
-        discard
+        if(musicPath != ""): startMusic(musicPath)
+
+
+
     of ROOM_HUB:
         room.layers[1] = createBackground("./assets/tilemaps/charSelect.tmx", "frames")
         room.layers[2] = createBackground("./assets/tilemaps/charSelect.tmx", "circle")
@@ -102,17 +137,36 @@ proc updateLevel(room: Room) =
 proc updateMusicRoom(room: Room) =
     return
 
+proc isCharacterAvaillable(selectCharacter: int8, myName: string, playerList: array[4, PlayerSerialize]): bool =
+    for p in playerList:
+        if(p == nil): continue
+        if(p.name == myName):
+            continue
+        if(p.state == PlayerState.CHAR_SELECTED and selectCharacter == p.character): return false
+
+    return true
+
+
 proc updateHub(room: Room, game: Game) =
     room.cursor.timer.dec
     if(room.cursor.timer <= 0):
-        if(getInput(InputRight)):
-            room.cursor.position = (room.cursor.position + 1) and 0b11
-            room.cursor.timer = 8
-            game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.EVENT_SELECT_CHAR, data: $room.cursor.position)))
-        if(getInput(InputLeft)):
-            room.cursor.position = (room.cursor.position - 1) and 0b11
-            room.cursor.timer = 8
-            game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.EVENT_SELECT_CHAR, data: $room.cursor.position)))
+        if(room.state != CHARACTER_SELECTED):
+            if(getInput(InputRight)):
+                room.cursor.position = (room.cursor.position + 1) and 0b11
+                room.cursor.timer = 8
+                game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.EVENT_SELECT_CHAR, data: $room.cursor.position)))
+            if(getInput(InputLeft)):
+                room.cursor.position = (room.cursor.position.int8 - 1) and 0b11
+                room.cursor.timer = 8
+                game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.EVENT_SELECT_CHAR, data: $room.cursor.position)))
+            if(getInput(InputButton1) and room.cursor.position >= 0):
+                if(isCharacterAvaillable(room.cursor.position.int8, game.credentials.name, room.hubData.playerList)):
+                    room.state = CHARACTER_SELECTED
+                    game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.EVENT_VALIDATE_CHAR, data: $room.cursor.position)))
+                    echo "character selected"
+
+        if(getInput(InputStart)):
+            game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.EVENT_START_GAME, data: "")))
     return
 
 proc updateScoreScreen(room: Room) =
@@ -159,18 +213,36 @@ proc drawTitleScreen(room: Room) =
     return
 
 import std/strformat
+proc countBullets(room: Room) =
+    var c = 0
+    for b in room.data.bulletList:
+        if(b != nil): c.inc
+    echo c
+
 proc drawLevel(room: Room) =
+    Layer(2).disable
     # echo fmt"x: {room.data.playerList[0].position.x}, y: {room.data.playerList[0].position.y}"
     Layer(1).setPosition(room.data.camera.position.x.int, room.data.camera.position.y.int)
     if room.needSwitching: room.switchTiles(room.switchState)
-    room.data.playerList[0].draw(room.bitmap)
+    for p in room.data.playerList:
+        if(p == nil): continue
+        p.draw(room.bitmap)
+    # room.data.playerList[0].draw(room.bitmap)
     for b in room.data.bulletList:
         if(b != nil): 
             b.draw(room.bitmap)
-    return
+            echo "draw bullet" 
 
 proc drawMusicRoom(room: Room) =
     return
+
+const names = @[
+    "",
+    "Ombrage Magica",
+    "System64",
+    "Elis Bloodthorns",
+    "PlaceHolder"
+]
 
 proc drawHubCharacters(room: Room, game: Game) =
     var count = 0
@@ -181,13 +253,22 @@ proc drawHubCharacters(room: Room, game: Game) =
             Sprite(i).setPicture(0)
             count.inc
             continue
+        let color: uint8 = if(isCharacterAvaillable(room.cursor.position.int8, game.credentials.name, room.hubData.playerList)): 2 else: 1
+        let colReady: uint8 = if(p.state == CHAR_SELECTED): 3 else: 1
         if p.name == game.credentials.name:
             Sprite(i).setPosition(104, 88)
-            discard # do something later
+            room.bitmap.drawText(Point(x: 128 - (names[p.character + 1].len shr 1) * 4, y: 128), names[p.character + 1], color)
+            room.bitmap.drawText(Point(x: 128 - (p.name.len shr 1) * 4, y: 128 + 8), p.name, colReady)
         else:
             Sprite(i).setPosition(count * 80 + 24, 24)
+            room.bitmap.drawText(Point(x: count * 80 + 48 - (names[p.character + 1].len shr 1) * 4, y: 64), names[p.character + 1],2)
+            room.bitmap.drawText(Point(x: count * 80 + 48 - (p.name.len shr 1) * 4, y: 64 + 8), p.name, colReady)
             count.inc
         Sprite(i).setPicture(p.character.int + 1)
+
+proc drawCode(room: Room) =
+    room.bitmap.drawText(Point(x: 16, y: 6 * 16), "Game code :", 2)
+    room.bitmap.drawText(Point(x: 16, y: 6 * 16 + 8), room.hubData.code, 2)
     
 proc drawHub(room: Room, game: Game) =
     setBgColor(0, 0, 0)
@@ -195,6 +276,7 @@ proc drawHub(room: Room, game: Game) =
     Layer(2).setTransform(frame.float / 2, SCREEN_X / 2, SCREEN_Y / 2, 0.5, 0.5)
     Layer(1).setBlendMode(BlendSub, 255)
     drawHubCharacters(room, game)
+    drawCode(room)
     return
 
 proc drawScoreScreen(room: Room) =
@@ -209,6 +291,7 @@ proc draw*(room: Room, game: Game) =
     of ROOM_LEVEL:
         room.drawLevel()
     of ROOM_HUB:
+        
         room.drawHub(game)
     else:
         discard
