@@ -12,6 +12,13 @@ import ../ipComp
 proc update*(hub: Hub) =
     return
 
+# TODO : Move to hub
+proc isEveryoneReady*(hub: Hub): bool =
+    for p in hub.playerList:
+        if(p == nil): continue
+        if(p.state != CHAR_SELECTED): return false
+    return true
+
 proc assignCharacter*(hub: Hub, player: Player, character: int) =
     player.character = character.int8
     return

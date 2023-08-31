@@ -23,10 +23,46 @@ proc randomStr(): string =
   for _ in 0..<8:
     add(result, char(rand(int('a')..int('z'))))
 
-proc getInstanceByCode(instanceMan: InstanceMan, code: string): GameInstance =
-    let instance = instanceMan.instanceList[code]
+type
+    ErrorCreate = enum
+        NONE,
+        NOT_MASTER,
+        NOT_EXIST,
+        PORTS_FULL
+
+proc getInstanceFromDatabase(instanceMan: InstanceMan, user: UserORM, code: string): tuple[error: ErrorCreate, port: Option[Port]] =
+    if(instanceMan.freePorts.head == nil): return (PORTS_FULL, none(Port))
+    let game = getGameByCode(code)
+    if(game.isNone):
+        return (NOT_EXIST, none(Port))
+    echo "the game exists"
+    if(game.get().creator.pseudo != user.pseudo): return (NOT_MASTER, none(Port))
+
+    let port = instanceMan.freePorts.head.value
+    # TODO : Caution, deep copy involved, check for bugs.
+    # TODO : I need to fix a bug here
+    var players = getPlayersByGame(game.get())
+    if(players.isNone): return
+    var playersGame = players.get()
+    var myGame = game.get()
+    let instance = loadGameInstanceSave(myGame, playersGame, user, port)
+    discard instanceMan.freePorts.remove(instanceMan.freePorts.head)
+    spawn instance.bootGameInstance2()
+    instanceMan.instanceList[code] = instance
+    echo port.uint16
+    return (NONE, some(port))
+
+proc getInstanceByCode(instanceMan: InstanceMan, user: UserORM, code: string): tuple[error: ErrorCreate, port: Option[Port]] =
+    let instance = instanceMan.instanceList.getOrDefault(code, nil)
+    if(instance != nil):
+        echo "Game already loaded!"
+        return (NONE, some(instance.server.address.port))
+    else:
+        echo "Game not loaded, looking in database..."
+        return instanceMan.getInstanceFromDatabase(user, code)
+        # return (PORTS_FULL, none(Port))
+    # let instance = instanceMan.instanceList[code]
     # TODO : if instance not in list, try to find it from database
-    return instance
 
 proc createInstance(instanceMan: InstanceMan, master: UserORM): Option[Port] {.gcsafe.} =
     if(instanceMan.freePorts.head == nil): return none(Port)
@@ -45,7 +81,9 @@ proc createInstance(instanceMan: InstanceMan, master: UserORM): Option[Port] {.g
 
 proc deleteInstance(instanceMan: InstanceMan, code: string) =
     let port = instanceMan.instanceList[code].server.address.port
+    var inst = instanceMan.instanceList[code]
     instanceMan.instanceList.del(code)
+    echo "deleting"
     instanceMan.freePorts.add(port)
 
 proc kick(server: Reactor, connection: Connection) =
@@ -79,33 +117,67 @@ proc authenticate(instanceMan: InstanceMan, msg: netty.Message): bool {.gcsafe.}
                 # instanceMan.server.kick(msg.conn)
                 echo "Connection not OK 2"
                 return false
-            var port: Option[Port]
+            # var port: Option[Port]
             if(mess.header == ENCRYPTED_CREDENTIALS_DATA):
-                port = instanceMan.createInstance(user.get())
+                let port = instanceMan.createInstance(user.get())
+                if(port.isNone):
+                    instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_CREATE_GAME, data: "")))
+                    instanceMan.connectionsToVerify.excl(msg.conn.address)
+                    return false
+                instanceMan.server.send(msg.conn, toFlatty(message.Message(header: OK_JOIN_SERVER, data: $(port.get.uint16))))
+                instanceMan.connectionsToVerify.excl(msg.conn.address)
+                echo "Connection OK"
+                return true
             else:
+                let (error, port) = instanceMan.getInstanceByCode(user.get(), $(code.cstring))
+                echo error
+                case error:
+                of NONE:
+                    instanceMan.server.send(msg.conn, toFlatty(message.Message(header: OK_JOIN_SERVER, data: $(port.get.uint16))))
+                    instanceMan.connectionsToVerify.excl(msg.conn.address)
+                    echo "Connection OK"
+                    return true
+                of NOT_EXIST:
+                    instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_NOT_EXIST, data: "")))
+                    instanceMan.connectionsToVerify.excl(msg.conn.address)
+                    return false
+                of NOT_MASTER:
+                    instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_NOT_MASTER, data: "")))
+                    instanceMan.connectionsToVerify.excl(msg.conn.address)
+                    return false
+                of PORTS_FULL:
+                    instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_CREATE_GAME, data: "")))
+                    instanceMan.connectionsToVerify.excl(msg.conn.address)
+                    return false
                 # If we have a port, we retrieve the right instance
-                let instance = instanceMan.getInstanceByCode($(code.cstring))
-                if(instance == nil): port = none(Port)
-                else: port = some(instance.server.address.port)
-            if(port.isNone): instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_CREATE_GAME, data: "")))
-            else: instanceMan.server.send(msg.conn, toFlatty(message.Message(header: OK_JOIN_SERVER, data: $(port.get.uint16))))
-            instanceMan.connectionsToVerify.excl(msg.conn.address)
-            # instanceMan.server.kick(msg.conn)
-            echo "Connection OK"
+            #     let instance = instanceMan.getInstanceByCode($(code.cstring))
+            #     if(instance == nil): port = none(Port)
+            #     else: port = some(instance.server.address.port)
+            # if(port.isNone):
+            #     instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_CREATE_GAME, data: "")))
+            #     instanceMan.connectionsToVerify.excl(msg.conn.address)
+            #     return false
+            # else: instanceMan.server.send(msg.conn, toFlatty(message.Message(header: OK_JOIN_SERVER, data: $(port.get.uint16))))
+            # instanceMan.connectionsToVerify.excl(msg.conn.address)
+            
+            # # instanceMan.server.kick(msg.conn)
+            # echo "Connection OK"
     return true
 
+proc checkServersToDeref(instanceMan: InstanceMan) {.gcsafe.} =
+    let tried = chan.tryRecv()
+    if tried.dataAvailable:
+        let code = tried.msg
+        instanceMan.deleteInstance(code)
+
 proc listen(instanceMan: InstanceMan) {.gcsafe.} =
+    instanceMan.checkServersToDeref()
 
     for connection in instanceMan.server.newConnections:
         instanceMan.connectionsToVerify.incl(connection.address)
 
     for msg in instanceMan.server.messages:
         if not instanceMan.authenticate(msg): continue
-
-proc checkServersToDeref(instanceMan: InstanceMan) {.gcsafe.} =
-    let tried = chan.tryRecv()
-    if tried.dataAvailable:
-        instanceMan.deleteInstance(tried.msg)
 
 proc bootInstanceManager*() {.thread.} =
     var instanceMan = InstanceMan()

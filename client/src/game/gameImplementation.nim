@@ -61,6 +61,7 @@ proc fetchMessages*(game: Game) =
             tile.index = e.tileType
             game.room.layers[1].layer.setTile(e.coordinates.y, e.coordinates.x, tile)
         of MessageHeader.EVENT_SWITCH:
+            echo "Switch hit!"
             game.room.needSwitching = true
             let e = fromFlatty(myMsg.data, events.EventSwitch)
             game.room.switchState = e.state
@@ -84,7 +85,16 @@ proc fetchMessages*(game: Game) =
             game.room.init("./assets/musics/select.kt")
         of MessageHeader.ERROR_CREATE_GAME:
             game.client.disconnect(game.connection)
-            # TODO : Display error message window
+            var a = messageBox("Error!", "Could not create the game!\n Please try again later!", DialogType.Ok, IconType.Error, Button.Yes)
+            game.room.state = NONE
+        of MessageHeader.ERROR_NOT_MASTER:
+            game.client.disconnect(game.connection)
+            var a = messageBox("Error!", "The game can only be loaded back by the Game Master!", DialogType.Ok, IconType.Error, Button.Yes)
+            game.room.state = NONE
+        of MessageHeader.ERROR_NOT_EXIST:
+            game.client.disconnect(game.connection)
+            var a = messageBox("Error!", "This game does not exist!\n Call Ombrage Magica to bring it to Existence!", DialogType.Ok, IconType.Error, Button.Yes)
+            game.room.state = NONE
         of MessageHeader.EVENT_SERVER_DEAD:
             game.client.disconnect(game.connection)
             game.room.kind = ROOM_TITLE

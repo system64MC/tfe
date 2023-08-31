@@ -386,11 +386,11 @@ method update*(player: actors.Player, infos: var GameInfos): void =
     for i in 0..<player.timers.len:
         if(player.timers[i] > 0):
             player.timers[i].dec
-    if(player.inputUp()):    player.velY -= 2 * player.deltaTime * TPS
-    if(player.inputDown()):  player.velY += 2 * player.deltaTime * TPS
-    if(player.inputLeft()):  player.velX -= 2 * player.deltaTime * TPS
+    if(player.inputUp()   ): player.velY -= 2 * player.deltaTime * TPS
+    if(player.inputDown() ): player.velY += 2 * player.deltaTime * TPS
+    if(player.inputLeft() ): player.velX -= 2 * player.deltaTime * TPS
     if(player.inputRight()): player.velX += 2 * player.deltaTime * TPS
-    if(player.inputFire()): player.fire(infos.loadedRoom.bulletList)
+    if(player.inputFire() ): player.fire(infos.loadedRoom.bulletList)
 
     # TODO : Remove this
     if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0

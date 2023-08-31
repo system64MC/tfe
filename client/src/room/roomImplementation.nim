@@ -29,8 +29,9 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
     # for i in 0..<room.layers.len:
     #     try:
     #         if(Layer(i).getTilemap != nil):
+    #             Layer(i).disable
     #             Layer(i).getTilemap.delete
-    #             # room.layers[i].layer = nil
+    #             room.layers[i].layer = nil
     #     except:
     #         discard
 
@@ -231,7 +232,6 @@ proc drawLevel(room: Room) =
     for b in room.data.bulletList:
         if(b != nil): 
             b.draw(room.bitmap)
-            echo "draw bullet" 
 
 proc drawMusicRoom(room: Room) =
     return

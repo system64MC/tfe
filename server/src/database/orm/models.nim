@@ -11,27 +11,27 @@ type
         password*: string
 
     GameORM* = ref object of Model
+        # Game code
+        gameCode*: string
         # List of players of the game. 4 players max per game.
         # players*: seq[PlayerORM]
         # Creator of the game instance
-        creator*: UserORM
         # The current level
         level*: int
         # Is the game finished?
         isFinished*: bool
         # Did the game started?
         hasStarted*: bool
-        # Game code
-        code*: string
         # When the game is created?
         creationDate*: DateTime
+        creator*: UserORM
 
 
     PlayerORM* = ref object of Model
         # The user that controls this player
         user*: UserORM
         # Number of lifes left
-        lifes*: int = 5
+        lifes*: uint8 = 5
         # Player's score
         score*: int = 0
         # Powerup
@@ -56,7 +56,7 @@ proc getUserByPseudo*(pseudo: string): Option[UserORM] {.gcsafe.} =
     except:
         return none(UserORM)
 
-proc getUserByNameAndPassword*(name: string, password: string): Option[UserORM] =
+proc getUserByNameAndPassword*(name: string, password: string): Option[UserORM] {.gcsafe.} =
     var user = UserORM()
     echo password
     try:
@@ -76,7 +76,7 @@ proc addUserToDb*(name: string, password: string): bool =
         return false
         
 proc newGame*(creator: UserORM, code: string): GameORM =
-    var game = GameORM(creator: creator, code: code, creationDate: now())
+    var game = GameORM(creator: creator, gameCode: code, creationDate: now())
     return game
 
 func newPlayer*(user: UserORM, game: GameORM): PlayerORM = 
@@ -85,3 +85,24 @@ func newPlayer*(user: UserORM, game: GameORM): PlayerORM =
     game: game,
     character: -1
     )
+
+proc getGameByCode*(code: string): Option[GameORM] {.gcsafe.} =
+    var game = GameORM(newGame(newUser("", ""), ""))
+    echo code
+    try:
+        withDbConn(con):
+            echo "test db"
+            echo game == nil
+            con.select(game, "GameORM.gameCode = ?", code)
+        return some(game)
+    except:
+        return none(GameORM)
+
+proc getPlayersByGame*(game: GameORM): Option[seq[PlayerORM]] =
+    var players = @[newPlayer(newUser("", ""), game)]
+    try:
+        withDbConn(con):
+            con.select(players, "PlayerORM.game = ?", game)
+        return some(players)
+    except:
+        return none(seq[PlayerORM])
