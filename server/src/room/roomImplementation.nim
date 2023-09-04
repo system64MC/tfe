@@ -101,7 +101,7 @@ proc serializePlayers(room: Room): array[4, PlayerSerialize] =
     var arr: array[4, PlayerSerialize]
     for i in 0..<room.playerList.len:
         let p = room.playerList[i]
-        if(p != nil):
+        if(p != nil and p.address.isSome):
             arr[i] = p.serialize()
     return arr
 

@@ -1,3 +1,3 @@
 cd server
-nimble build
+nimble build --mm:arc
 cd ..

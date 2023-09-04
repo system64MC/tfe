@@ -22,11 +22,10 @@ proc main2(): void =
   var webServer: Thread[void]
   var instanceMan: Thread[void]
   # seedDb()
-  createThread(instanceMan, bootInstanceManager)
+  # createThread(instanceMan, bootInstanceManager)
   createThread(webServer, bootApi)
   # createThread(th, bootGameInstance)
-  while true:
-    continue
+  bootInstanceManager()
   
 when isMainModule:
   main2()
