@@ -25,6 +25,86 @@ type
 var chan*: Channel[string]
 chan.open()
 
+# proc createInstanceToDatabase(game: GameInstance) =
+#     game.game.state = HAS_STARTED
+#     for i in 0..<4:
+#         let playerHub = game.infos.hub.playerList[i]
+#         let playerDb = game.players[i]
+#         if(playerHub == nil or playerDb == nil): continue
+#         playerDb.character = playerHub.character
+#         playerDb.game = game.game
+
+#     insertPlayers(game.players, game.game)
+
+proc findPlayerIndexByName(instance: GameInstance, name: string): int =
+    for i in 0..<instance.players.len:
+        let p = instance.players[i]
+        if(p == nil): continue
+        if(p.user.pseudo == name): return i
+    return -1
+
+proc saveGameGameOver(instance: GameInstance) =
+    var game = instance.game
+    game.state = GAME_OVER
+    var fScore = 0
+    var playerSeq = newSeq[PlayerORM](0)
+    for p in instance.infos.loadedRoom.playerList:
+        if(p == nil): continue
+        fScore += p.score.int
+        var playerO = instance.players[instance.findPlayerIndexByName(p.name)]
+        playerO.score = p.score.int
+        playerO.lifes = p.lifes
+        playerO.powerup = p.powerUp.uint8
+        playerO.bombs = p.bombs
+        playerO.character = p.character
+        playerSeq.add(playerO)
+    echo fScore
+    game.totalScore = fScore
+    var gameSeq = @[game]
+    playerSeq.save()
+    gameSeq.save()
+    echo "game saved!"
+
+proc saveGameFinished(instance: GameInstance) =
+    var game = instance.game
+    game.state = HAS_FINISHED
+    var fScore = 0
+    var playerSeq = newSeq[PlayerORM](0)
+    for p in instance.infos.loadedRoom.playerList:
+        if(p == nil): continue
+        fScore += p.score.int
+        var playerO = instance.players[instance.findPlayerIndexByName(p.name)]
+        playerO.score = p.score.int
+        playerO.lifes = p.lifes
+        playerO.powerup = p.powerUp.uint8
+        playerO.bombs = p.bombs
+        playerO.character = p.character
+        playerSeq.add(playerO)
+    echo fScore
+    game.totalScore = fScore
+    var gameSeq = @[game]
+    playerSeq.save()
+    gameSeq.save()
+    echo "game saved!"
+
+proc saveGameLevel(instance: GameInstance) =
+    var game = instance.game
+    game.state = HAS_STARTED
+    var playerSeq = newSeq[PlayerORM](0)
+    for p in instance.infos.loadedRoom.playerList:
+        if(p == nil): continue
+        var playerO = instance.players[instance.findPlayerIndexByName(p.name)]
+        playerO.score = p.score.int
+        playerO.lifes = p.lifes
+        playerO.powerup = p.powerUp.uint8
+        playerO.bombs = p.bombs
+        playerO.character = p.character
+        playerSeq.add(playerO)
+    var gameSeq = @[game]
+    playerSeq.save()
+    gameSeq.save()
+    echo "game saved!"
+
 proc hasFreeSlots(pList: array[4, Player]): int =
     for i in 0..<pList.len:
         let p = pList[i]
@@ -39,11 +119,10 @@ proc isInGame(name: string, pList: array[4, Player]): (bool, int) =
     return (false, -1)
 
 proc notifyLoadLevel(game: GameInstance, c: Connection) =
-    game.server.send(c, toFlatty(message.Message(header: EVENT_LOAD_LEVEL, data: $(game.game.level))))
-    game.server.send(c, toFlatty(message.Message(header: DESTROYABLE_TILES_DATA, data: toFlatty(game.infos.loadedRoom.destroyableTilesList))))
-    let switchEvent = EventSwitch(state: game.infos.loadedRoom.switchOn)
-    let m = message.Message(header: message.EVENT_SWITCH, data: toFlatty(switchEvent))
-    game.server.send(c, toFlatty(m))
+    game.server.send(c, toFlatty(message.Message(header: EVENT_LOAD_LEVEL, data: toFlatty(EventLevelLoad(
+        level: game.game.level, 
+        tileData: game.infos.loadedRoom.destroyableTilesList, 
+        switchState: game.infos.loadedRoom.switchOn)))))
 
 proc `==`(a, b: Port): bool {.borrow.}
 proc authenticateLevel(instance: GameInstance, msg: netty.Message): bool {.gcsafe.} =
@@ -71,7 +150,11 @@ proc authenticateLevel(instance: GameInstance, msg: netty.Message): bool {.gcsaf
                 instance.server.send(msg.conn, toFlatty(message.Message(header: ERROR_STARTED, data: "")))
                 instance.connectionsToVerify.excl(msg.conn.address)
                 return false
-
+            
+            if(instance.infos.loadedRoom.playerList[index].address.isSome):
+                instance.server.send(msg.conn, toFlatty(message.Message(header: ERROR_ALREADY_CONNECTED, data: "")))
+                instance.connectionsToVerify.excl(msg.conn.address)
+                return false
             instance.infos.loadedRoom.playerList[index].address = some(msg.conn.address)
         
             instance.notifyLoadLevel(msg.conn)
@@ -107,6 +190,12 @@ proc authenticateHub(instance: GameInstance, msg: netty.Message): bool {.gcsafe.
                 # instance.server.kick(msg.conn)
                 echo "Connection not OK 2"
                 return false
+
+            let (inGame, index) = isInGame(user.get.pseudo, instance.infos.hub.playerList)
+            if(inGame and instance.infos.hub.playerList[index].address.isSome):
+                instance.server.send(msg.conn, toFlatty(message.Message(header: ERROR_ALREADY_CONNECTED, data: "")))
+                instance.connectionsToVerify.excl(msg.conn.address)
+                return false
         
             if(user.get().pseudo == instance.master.user.pseudo):
                 instance.infos.master.address = some(msg.conn.address)
@@ -130,7 +219,7 @@ proc findPlayerByAddress(playerList: array[4, Player], address: Address): Player
     return nil
 
 proc createInstanceToDatabase(game: GameInstance) =
-    game.game.hasStarted = true
+    game.game.state = HAS_STARTED
     for i in 0..<4:
         let playerHub = game.infos.hub.playerList[i]
         let playerDb = game.players[i]
@@ -152,7 +241,8 @@ proc startGame(game: GameInstance) =
     for p in game.infos.loadedRoom.playerList:
         if(p == nil): continue
         p.position = VectorF64(x: 50, y: 50)
-        p.hitbox = Hitbox(size: VectorU8(x: 15, y: 31))
+        p.hitbox = Hitbox(size: VectorU8(x: 15, y: 23))
+        p.state = PLAYER_CONNECTING
     # We load the test room.
     game.infos.loadedRoom.setupMap(game.game.level)
 
@@ -181,9 +271,20 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
             let duration = (t - e.sentAt)
             p.deltaTimeAccumulator += duration
             p.deltaTimeHowManyValues.inc
+
+        if(data.header == MessageHeader.PLAYER_READY):
+            if(game.infos.state == GameState.HUB): continue
+            let p = game.infos.loadedRoom.playerList.findPlayerByAddress(msg.conn.address)
+            if(game.infos.state == GameState.WAIT_READY): p.state = PLAYER_READY
+            else:
+                if(p.lifes > 0):
+                    p.state = PLAYER_INVINCIBLE
+                    p.timers[7] = 3 * 60
+                else:
+                    p.state = PLAYER_GAMEOVER
         
         if(data.header == MessageHeader.EVENT_START_GAME):
-            if(game.infos.state != GameState.HUB or game.game.hasStarted): continue
+            if(game.infos.state != GameState.HUB or game.game.state == HAS_STARTED): continue
             if((msg.conn.address == game.infos.master.address.get()) and game.infos.hub.isEveryoneReady()):
                 game.startGame()
                 for c in game.server.connections:
@@ -199,14 +300,42 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
             p.deltaTimeAccumulator = 0
             p.deltaTimeHowManyValues = 0
 
+proc isEveryoneGameOver(game: GameInstance): bool =
+    for p in game.infos.loadedRoom.playerList:
+        if(p == nil): continue
+        if(p.lifes > 0): return false
+    return true
+
+proc notifyGameOver(game: GameInstance) =
+    for c in game.server.connections:
+        game.server.send(c, toFlatty(message.Message(header: EVENT_GAME_OVER, data: $game.game.totalScore)))
+    game.server.tick()
+
+proc doGameOverStuff(game: GameInstance) =
+    game.saveGameGameOver()
+    game.notifyGameOver()
+
+
 proc update*(game: GameInstance): void {.gcsafe.} =
     game.infos.eventList.setLen(0)
     case game.infos.state:
     of HUB:
         game.infos.hub.update()
     of LEVEL:
+        if(game.isEveryoneGameOver()): game.infos.state = GameState.GAME_OVER
         game.infos.loadedRoom.update(game.infos)
     of DEAD_GAME: return
+    of GAME_OVER: return
+    of WAIT_READY:
+        for p in game.infos.loadedRoom.playerList:
+            if(p == nil): continue
+            if(p.state != PLAYER_READY): return
+            if(p.lifes > 0):
+                p.state = PLAYER_INVINCIBLE
+                p.timers[7] = 3 * 60
+            else:
+                p.state = PLAYER_GAMEOVER
+        game.infos.state = GameState.LEVEL
     else:
         game.infos.loadedRoom.update(game.infos)
 
@@ -219,6 +348,9 @@ import supersnappy
 proc serialize*(game: GameInstance): void {.gcsafe.} =
     if(game.infos.state == DEAD_GAME):
         game.notifyDeadServer()
+        return
+    if(game.infos.state == GAME_OVER):
+        game.doGameOverStuff()
         return
     if(game.infos.state != GameState.HUB):
         let d = compress(game.infos.loadedRoom.serialize())
@@ -314,13 +446,20 @@ proc bootGameInstance2*(game: GameInstance) {.thread.} =
     game.init()
 
     # Main game loop
-    while game.infos.state != DEAD_GAME:
+    while game.infos.state notin {DEAD_GAME, GAME_OVER}:
+        # echo "begin :", game.infos.state
         game.beginTick()
+        # echo "tick start :", game.infos.state
         game.checkNewDeadConnections()
+        # echo "check conns :", game.infos.state
         game.fetchMessages()
+        # echo "fetchMess :", game.infos.state
         game.update()
+        # echo "update :", game.infos.state
         game.serialize()
+        # echo "serialize :", game.infos.state
         game.endTick()
+        # echo "end :", game.infos.state
     echo "closing server"
 
 proc loadGameInstanceSave*(save: var GameORM, players: var seq[PlayerORM], master: UserORM, port: Port): GameInstance =
@@ -334,11 +473,11 @@ proc loadGameInstanceSave*(save: var GameORM, players: var seq[PlayerORM], maste
             name: pOrm.user.pseudo,
             address: none(Address),
             lifes: pOrm.lifes,
-            state: PLAYER_DISCONNETED,
+            state: if(pOrm.lifes == 0): PLAYER_GAMEOVER else: PLAYER_DISCONNETED,
             bombs: pOrm.bombs,
             powerUp: pOrm.powerup.Powerup,
             position: VectorF64(x: 50, y: 50),
-            hitbox: Hitbox(size: VectorU8(x: 15, y: 31))
+            hitbox: Hitbox(size: VectorU8(x: 15, y: 23))
         )
         if(master.pseudo == playersGame[i].name):
             instance.infos.master = playersGame[i]
@@ -350,7 +489,7 @@ proc loadGameInstanceSave*(save: var GameORM, players: var seq[PlayerORM], maste
     instance.infos.loadedRoom.bulletList = initBulletList()
     instance.infos.loadedRoom.setupMap(save.level)
     instance.infos.loadedRoom.playerList = playersGame
-    instance.infos.state = GameState.WAIT_READY
+    instance.infos.state = GameState.LEVEL
     instance.server = newReactor("127.0.0.1", port.int)
 
     return instance

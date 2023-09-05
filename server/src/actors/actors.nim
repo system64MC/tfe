@@ -35,6 +35,7 @@ type
         state*: PlayerState
         address*: Option[Address] = none(Address)
         name*: string
+        score*: uint32
 
     # Ennemy* = ref object of Actor
     #     ennemyType*: int

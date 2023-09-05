@@ -12,8 +12,9 @@ import std/[options, json, strformat]
 import ../ipComp
 
 proc updatePlayers(room: Room, infos: var GameInfos) =
-    for p in room.playerList:
-        if(p != nil): p.update(infos)
+    for i in 0..<room.playerList.len:
+        let p = room.playerList[i]
+        if(p != nil): p.update(infos, i.int8)
 
 proc updateBullets(room: Room, infos: var GameInfos) =
     for b in infos.loadedRoom.bulletList:
@@ -42,7 +43,8 @@ proc updateBullets(room: Room, infos: var GameInfos) =
     #     b.update(game.infos)
 
 proc update*(room: Room, infos: var GameInfos): void =
-    room.camera.update()
+    if(infos.state == GameState.WAIT_READY): return
+    room.camera.update(room)
     room.updatePlayers(infos)
     room.updateBullets(infos)
 

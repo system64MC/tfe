@@ -10,6 +10,7 @@ type
         LEVEL,
         DEAD_GAME,
         WAIT_READY,
+        GAME_OVER,
 
     GameInfos* = object
         eventList*: seq[message.Message]

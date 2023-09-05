@@ -43,6 +43,7 @@ proc checkCollisions(bullet: Bullet, infos: var GameInfos): bool =
             let tileChangeEvent = EventTileChange(coordinates: pos, tileType: AIR.uint16)
             let m = Message(header: message.EVENT_DESTROY_TILE, data: toFlatty(tileChangeEvent))
             infos.eventList.add(m)
+            infos.loadedRoom.playerList[bullet.playerId].score += 50
             return true
         of Collision.SWITCH_TILE:
             infos.loadedRoom.switchOn = not infos.loadedRoom.switchOn
@@ -82,7 +83,6 @@ proc toSerializeObject*(bullet: Bullet): BulletSerialize =
     b.velX = bullet.velX
     b.velY = bullet.velY
     b.bulletType = bullet.bulletType
-    b.isPlayer = bullet.isPlayer
     b.bulletId = bullet.bulletId
     return b
 
@@ -93,6 +93,5 @@ method serialize*(bullet: Bullet): string =
     b.velX = bullet.velX
     b.velY = bullet.velY
     b.bulletType = bullet.bulletType
-    b.isPlayer = bullet.isPlayer
     b.bulletId = bullet.bulletId
     return toFlatty(message.Message(header: MessageHeader.BULLET_DATA, data: toFlatty(b)))

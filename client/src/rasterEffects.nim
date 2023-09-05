@@ -2,6 +2,7 @@ import tilengine/tilengine
 import math
 import game/game
 import common/constants
+import drawing
 
 proc lerp(x, x0, x1, fx0, fx1: float): float =
     return (fx0) + ((fx1) - (fx0))*((x) - (x0))/((x1) - (x0))
@@ -25,3 +26,12 @@ proc selectScreenRasterEffect*(line: int32) {.cdecl.} =
     if(line < 16):
         x = frame shl 1
     Layer(1).setPosition(x, 0)
+
+proc displayHud*(line: int32) =
+    if(line < 8):
+        Layer(0).enable
+    else:
+        Layer(0).disable
+
+proc levelRasterEffect*(line: int32) {.cdecl.} =
+    displayHud(line)

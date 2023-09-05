@@ -53,6 +53,7 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         Layer(3).setPriority(true)
     for i in 0..<512:
         Sprite(i).disable
+    Layer(0).disable
     case room.kind:
     of ROOM_TITLE:
         Sprite(0).setSpriteSet(sprites[SpriteTypes.CURSOR.int])
@@ -73,11 +74,12 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         let musicPath = jNode["music"].getStr()
         # room.layers[1] = createBackground(tmxPath, "background")
         Layer(2).disable()
-        room.layers[1] = createBackground("./assets/tilemaps/testRoom.tmx", "background")
+        room.layers[1] = createBackground(tmxPath, "background")
         Layer(1).setTilemap(room.layers[1].layer)
         if(musicPath != ""): startMusic(musicPath)
-
-
+        setRasterCallback(levelRasterEffect)
+        Layer(0).setTilemap(hud)
+        Layer(0).enable
 
     of ROOM_HUB:
         room.layers[1] = createBackground("./assets/tilemaps/charSelect.tmx", "frames")
@@ -90,6 +92,10 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         Sprite(1).setSpriteSet(sprites[SpriteTypes.CHARACTERS.int])
         Sprite(2).setSpriteSet(sprites[SpriteTypes.CHARACTERS.int])
         Sprite(3).setSpriteSet(sprites[SpriteTypes.CHARACTERS.int])
+    of ROOM_GAMEOVER:
+        Layer(0).disable
+        Layer(2).disable
+        Layer(1).setTilemap(gameOver)
     else:
         discard
     if(musicPath != ""): startMusic(musicPath)
@@ -97,6 +103,7 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
 
 proc updateTitleScreen(room: Room, game: Game) =
     room.cursor.timer.dec
+    room.validateCounter.dec
     if(room.cursor.timer <= 0):
         if(getInput(InputDown)):
             room.cursor.position = min(room.cursor.position + 1, EXIT.int)
@@ -105,6 +112,7 @@ proc updateTitleScreen(room: Room, game: Game) =
             room.cursor.position = max(room.cursor.position - 1, JOIN_GAME.int)
             room.cursor.timer = 8
     if(getInput(InputStart)):
+        if(room.validateCounter > 0): return
         case room.cursor.position.TitleChoices:
         of JOIN_GAME:
             if(room.state == WAITING_HUB_TRANSFER): return
@@ -173,8 +181,11 @@ proc updateHub(room: Room, game: Game) =
 proc updateScoreScreen(room: Room) =
     return
 
-
-
+proc updateGameOver(room: Room) =
+    if(getInput(InputStart)):
+        room.kind = ROOM_TITLE
+        room.validateCounter = 8
+        room.init("magica.kt")
 
 proc update*(room: Room, game: Game) =
     case room.kind:
@@ -182,6 +193,8 @@ proc update*(room: Room, game: Game) =
         room.updateTitleScreen(game)
     of ROOM_HUB:
         room.updateHub(game)
+    of ROOM_GAMEOVER:
+        room.updateGameOver()
     else:
         discard
     return
@@ -220,14 +233,16 @@ proc countBullets(room: Room) =
         if(b != nil): c.inc
     echo c
 
-proc drawLevel(room: Room) =
+proc drawLevel(room: Room, game: Game) =
     Layer(2).disable
     # echo fmt"x: {room.data.playerList[0].position.x}, y: {room.data.playerList[0].position.y}"
     Layer(1).setPosition(room.data.camera.position.x.int, room.data.camera.position.y.int)
     if room.needSwitching: room.switchTiles(room.switchState)
     for p in room.data.playerList:
         if(p == nil): continue
-        p.draw(room.bitmap)
+        if(p.name == game.credentials.name):
+            p.drawHud()
+        if(p.lifes > 0): p.draw(room.bitmap)
     # room.data.playerList[0].draw(room.bitmap)
     for b in room.data.bulletList:
         if(b != nil): 
@@ -282,6 +297,15 @@ proc drawHub(room: Room, game: Game) =
 proc drawScoreScreen(room: Room) =
     return
 
+import strutils
+proc drawGameOver(room: Room) =
+    Layer(1).setPosition(0, 0)
+    let str = ($room.finalScore).align(9, '0')
+    var i = 0
+    for c in str:
+        gameOver.getTiles(5, 4)[i].index = (c.uint16 - 22 + 1)
+        i.inc
+
 
 proc draw*(room: Room, game: Game) =
     # room.bitmap.drawCircleFill(Point(x: 100, y: 64), 10)
@@ -289,10 +313,11 @@ proc draw*(room: Room, game: Game) =
     of ROOM_TITLE:
         room.drawTitleScreen()
     of ROOM_LEVEL:
-        room.drawLevel()
+        room.drawLevel(game)
     of ROOM_HUB:
-        
         room.drawHub(game)
+    of ROOM_GAMEOVER:
+        room.drawGameOver()
     else:
         discard
     return

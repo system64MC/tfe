@@ -10,6 +10,12 @@ type
         # Some security is always good.
         password*: string
 
+    GameORMState* = enum
+        NONE,
+        HAS_STARTED,
+        HAS_FINISHED,
+        GAME_OVER
+
     GameORM* = ref object of Model
         # Game code
         gameCode*: string
@@ -18,14 +24,12 @@ type
         # Creator of the game instance
         # The current level
         level*: int
-        # Is the game finished?
-        isFinished*: bool
-        # Did the game started?
-        hasStarted*: bool
+        # Game State?
+        state*: GameORMState
         # When the game is created?
         creationDate*: DateTime
         creator*: UserORM
-
+        totalScore*: int
 
     PlayerORM* = ref object of Model
         # The user that controls this player
@@ -97,6 +101,27 @@ proc getGameByCode*(code: string): Option[GameORM] {.gcsafe.} =
         return some(game)
     except:
         return none(GameORM)
+
+proc save*(game: var seq[GameORM]) =
+    try:
+        withDbConn(con):
+            con.update(game)
+    except:
+        echo "error"
+
+proc save*(player: var PlayerORM) =
+    try:
+        withDbConn(con):
+            con.update(player)
+    except:
+        discard
+
+proc save*(players: var seq[PlayerORM]) =
+    try:
+        withDbConn(con):
+            con.update(players)
+    except:
+        discard
 
 proc getPlayersByGame*(game: GameORM): Option[seq[PlayerORM]] =
     var players = @[newPlayer(newUser("", ""), game)]

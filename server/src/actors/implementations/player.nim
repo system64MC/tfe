@@ -32,7 +32,7 @@ proc constructPlayer*(position: VectorF64, character: int8, lifes: uint8): actor
     player.position = position
     player.character = character
     player.lifes = lifes
-    player.hitbox = Hitbox(size: VectorU8(x: 15, y: 31))
+    player.hitbox = Hitbox(size: VectorU8(x: 15, y: 23))
     return player
 
 proc inputUp(player: actors.Player):    bool = return ((player.input and 0b0000_1000) > 0) 
@@ -42,6 +42,11 @@ proc inputRight(player: actors.Player): bool = return ((player.input and 0b0000_
 proc inputFire(player: actors.Player):  bool = return ((player.input and 0b0001_0000) > 0)
 proc inputA(player: actors.Player):     bool = return ((player.input and 0b0010_0000) > 0)
 proc inputB(player: actors.Player):     bool = return ((player.input and 0b0100_0000) > 0)
+
+method die(player: actors.Player) =
+    if(player.lifes > 0): player.lifes.dec
+    player.state = PLAYER_DEAD
+    player.timers[7] = 3 * 60
 
 method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
     if(loadedRoom == nil): return
@@ -64,7 +69,7 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
         getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
         getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64), map),
     ]
-
+        
     # Walls
     for i in 0..<6:
         case wallTiles[i].index.Collision:
@@ -190,7 +195,7 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                 continue
 
 # Do not use. This is the old collisions engine. Keeping as archive for now.
-method checkCollisionsOld(player: actors.Player, loadedRoom: room.Room): void =
+method checkCollisionsOld(player: actors.Player, loadedRoom: room.Room, playerIndex: int8): void =
     let camX = loadedRoom.camera.position.x
     let camV = loadedRoom.camera.velocity.x
     #[
@@ -279,9 +284,9 @@ method checkCollisionsOld(player: actors.Player, loadedRoom: room.Room): void =
 #[
     P - - -
 ]#
-proc fireSimple(player: actors.Player, bulletList: var BulletList) =
+proc fireSimple(player: actors.Player, bulletList: var BulletList, playerIndex: int8) =
     let b = Bullet(
-        isPlayer: true, 
+        playerId: playerIndex, 
         bulletType: 0, 
         vector: VectorF64(x: 0, y: 4),
         position: VectorF64(
@@ -295,21 +300,21 @@ proc fireSimple(player: actors.Player, bulletList: var BulletList) =
 #[
     - - - P - - -
 ]#
-proc fireDouble(player: actors.Player, bulletList: var BulletList) =
+proc fireDouble(player: actors.Player, bulletList: var BulletList, playerIndex: int8) =
     let b = Bullet(
-        isPlayer: true, 
+        playerId: playerIndex, 
         bulletType: 0, 
         vector: VectorF64(x: 0, y: 4),
         position: VectorF64(
             x: player.position.x + player.hitbox.size.x.float64,
             y: player.position.y + player.hitbox.size.y.float64 / 2
         ),
-        bulletId: bulletList.getFreeIndex().uint16, 
+        bulletId: bulletList.getFreeIndex().uint16,
         )
     bulletList.add(b)
     
     let b2 = Bullet(
-        isPlayer: true, 
+        playerId: playerIndex, 
         bulletType: 0, 
         vector: VectorF64(x: 180, y: 4),
         position: VectorF64(
@@ -327,9 +332,9 @@ proc fireDouble(player: actors.Player, bulletList: var BulletList) =
      \
       \
 ]#
-proc fireTriple(player: actors.Player, bulletList: var BulletList) =
+proc fireTriple(player: actors.Player, bulletList: var BulletList, playerIndex: int8) =
     let b = Bullet(
-        isPlayer: true, 
+        playerId: playerIndex, 
         bulletType: 0, 
         vector: VectorF64(x: 0, y: 4),
         position: VectorF64(
@@ -342,7 +347,7 @@ proc fireTriple(player: actors.Player, bulletList: var BulletList) =
     
 
     let b2 = Bullet(
-        isPlayer: true, 
+        playerId: playerIndex, 
         bulletType: 0, 
         vector: VectorF64(x: 30, y: 4),
         position: VectorF64(
@@ -355,7 +360,7 @@ proc fireTriple(player: actors.Player, bulletList: var BulletList) =
     
 
     let b3 = Bullet(
-        isPlayer: true, 
+        playerId: playerIndex, 
         bulletType: 0, 
         vector: VectorF64(x: -30, y: 4),
         position: VectorF64(
@@ -368,53 +373,117 @@ proc fireTriple(player: actors.Player, bulletList: var BulletList) =
 
 
 
-method fire*(player: actors.Player, bulletList: var BulletList): void {.base, gcsafe.} =
+method fire*(player: actors.Player, bulletList: var BulletList, playerIndex: int8): void {.base, gcsafe.} =
     if(player.timers[0] > 0): return
     case player.powerUp:
     of Powerup.SIMPLE:
-        player.fireSimple(bulletList)
+        player.fireSimple(bulletList, playerIndex)
     of Powerup.DOUBLE:
-        player.fireDouble(bulletList)
+        player.fireDouble(bulletList, playerIndex)
     of Powerup.TRIPLE:
-        player.fireTriple(bulletList)
+        player.fireTriple(bulletList, playerIndex)
     
     player.timers[0] = 5
     return
 
-method update*(player: actors.Player, infos: var GameInfos): void =
+proc checkCrushedOrKilled*(player: actors.Player, loadedRoom: Room) =
+    let camX = loadedRoom.camera.position.x
+    let map = loadedRoom
+    if(player.position.x < 0):
+        player.position.x = 0
+    if(player.position.x + player.hitbox.size.x.float >= SCREEN_X):
+        player.position.x = SCREEN_X - player.hitbox.size.x.float
+
+    if(player.state != PLAYER_ALIVE): return
+    let wallTiles: array[6, Tile] = [
+        # Left side
+        getTile(VectorF64(x: player.position.x + camX, y: player.position.y), map),
+        getTile(VectorF64(x: player.position.x + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
+        getTile(VectorF64(x: player.position.x + camX, y: player.position.y + player.hitbox.size.y.float64), map),
+        
+        # Right side
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y + player.hitbox.size.y.float64), map),
+    ]
+
+    var pointTests: array[6, VectorF64] = [
+        VectorF64(x: player.position.x + player.velX + camX, y: player.position.y),
+        VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 / 2),
+        VectorF64(x: player.position.x + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64),
+
+        VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y),
+        VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64 / 2),
+        VectorF64(x: player.position.x + player.hitbox.size.x.float64 + player.velX + camX, y: player.position.y + player.hitbox.size.y.float64),
+    ]
+
+    for tile in wallTiles:
+        case tile.index.Collision:
+        of Collision.SOLID:
+            player.die()
+            return
+        of Collision.DESTROYABLE_TILE:
+            player.die()
+            return
+        of Collision.SWITCH_TILE:
+            player.die()
+            return
+        of Collision.TILE_SWITCH_ON:
+            if(not loadedRoom.switchOn): continue
+            player.die()
+            return
+        of Collision.TILE_SWITCH_OFF:
+            if(loadedRoom.switchOn): continue
+            player.die()
+            return
+        else: continue
+
+method update*(player: actors.Player, infos: var GameInfos, playerIndex: int8): void =
     if(player.isNil): return
     for i in 0..<player.timers.len:
         if(player.timers[i] > 0):
             player.timers[i].dec
+
+    if(player.state == PLAYER_DEAD and player.timers[7] == 0):
+        if(player.lifes > 0):
+            player.state = PLAYER_INVINCIBLE
+            player.timers[7] = 3 * 60
+        else:
+            player.state = PLAYER_GAMEOVER
+    if(player.state == PLAYER_INVINCIBLE and player.timers[7] == 0): player.state = PLAYER_ALIVE
+
+    if(player.state == PLAYER_DEAD or player.lifes == 0): return
     if(player.inputUp()   ): player.velY -= 2 * player.deltaTime * TPS
     if(player.inputDown() ): player.velY += 2 * player.deltaTime * TPS
     if(player.inputLeft() ): player.velX -= 2 * player.deltaTime * TPS
     if(player.inputRight()): player.velX += 2 * player.deltaTime * TPS
-    if(player.inputFire() ): player.fire(infos.loadedRoom.bulletList)
+    if(player.inputFire() ): player.fire(infos.loadedRoom.bulletList, playerIndex)
 
     # TODO : Remove this
     if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0
     if(player.inputB()): infos.loadedRoom.camera.velocity.x =  1.0
     infos.loadedRoom.camera.position.x += infos.loadedRoom.camera.velocity.x
-    player.checkCollisions(infos.loadedRoom)
+    
+    if(player.state == PLAYER_ALIVE): player.checkCollisions(infos.loadedRoom)
 
     player.position.x += player.velX
     player.position.y += player.velY
+    player.checkCrushedOrKilled(infos.loadedRoom)
     infos.loadedRoom.camera.velocity.x = 0
     player.velX = 0
     player.velY = 0
     player.input = 0
     return
 
-method serializeOld*(player: actors.Player): string = 
-    var p = PlayerSerialize()
-    p.position = player.position
-    p.hitbox = player.hitbox
-    p.velX = player.velX
-    p.velY = player.velY
-    p.lifes = player.lifes
-    p.character = player.character
-    return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))
+# method serializeOld*(player: actors.Player): string = 
+#     var p = PlayerSerialize()
+#     p.position = player.position
+#     p.hitbox = player.hitbox
+#     p.velX = player.velX
+#     p.velY = player.velY
+#     p.lifes = player.lifes
+#     p.character = player.character
+#     return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))
 
 method serialize*(player: actors.Player): PlayerSerialize = 
     var p = PlayerSerialize()
@@ -423,8 +492,11 @@ method serialize*(player: actors.Player): PlayerSerialize =
     p.velX = player.velX
     p.velY = player.velY
     p.lifes = player.lifes
+    p.bombs = player.bombs
     p.character = player.character
     p.name = player.name
     p.state = player.state
+    p.powerup = player.powerup
+    p.score = player.score
     return p
     # return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))

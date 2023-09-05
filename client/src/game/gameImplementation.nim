@@ -23,6 +23,7 @@ proc init*(credentials: CredentialsEncrypted): Game =
     createWindow(flags = {cwfNoVsync})
     setWindowTitle(fmt"Magica Online ~ {credentials.name}")
     game.client = newReactor()
+    # gameInstance = game
     return game
 
 proc serializeInputs(): string =
@@ -104,12 +105,37 @@ proc fetchMessages*(game: Game) =
         of MessageHeader.HUB_DATA:
             game.room.hubData = unserializeHub(myMsg.data)
         of MessageHeader.ERROR_FULL:
+            game.client.disconnect(game.connection)
             var a = messageBox("Error!", "The game is full!", DialogType.Ok, IconType.Error, Button.Yes)
             game.room.state = NONE
         of MessageHeader.EVENT_LOAD_LEVEL:
+            let lvData = myMsg.data.fromFlatty(EventLevelLoad)
             game.room.kind = ROOM_LEVEL
             game.room.state = NONE
-            game.room.init(level = myMsg.data.parseInt())
+            game.room.init("", lvData.level)
+
+            for coordinates, isHere in lvData.tileData:
+                if(not isHere):
+                    var tile = game.room.layers[1].layer.getTile(coordinates.y, coordinates.x)
+                    tile.index = 1
+                    game.room.layers[1].layer.setTile(coordinates.y, coordinates.x, tile)
+
+            game.room.needSwitching = true
+            game.room.switchState = lvData.switchState
+            game.client.send(game.connection, toFlatty(message.Message(header: PLAYER_READY, data: "")))
+
+        of MessageHeader.EVENT_GAME_OVER:
+            game.client.disconnect(game.connection)
+            game.room.state = NONE
+            let score = myMsg.data.parseInt()
+            game.room.kind = ROOM_GAMEOVER
+            game.room.finalScore = score
+            game.room.init("")
+        
+        of MessageHeader.ERROR_ALREADY_CONNECTED:
+            game.client.disconnect(game.connection)
+            var a = messageBox("Error!", "You are already connected in this game!", DialogType.Ok, IconType.Error, Button.Yes)
+            game.room.state = NONE
         else:
             continue
 

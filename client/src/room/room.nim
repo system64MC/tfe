@@ -13,7 +13,8 @@ type
         ROOM_HUB,
         ROOM_LEVEL,
         ROOM_SCORE,
-        ROOM_MUSIC
+        ROOM_MUSIC,
+        ROOM_GAMEOVER,
 
     RoomState* = enum
         NONE,
@@ -32,6 +33,8 @@ type
         needSwitching*: bool
         switchState*: bool
         state*: RoomState
+        finalScore*: int
+        validateCounter*: int
 
     TitleChoices* = enum
         JOIN_GAME,
