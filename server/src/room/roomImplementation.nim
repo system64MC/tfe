@@ -1,4 +1,5 @@
 import room
+import actorLoader
 import ../camera
 import common/[vectors, constants, commonActors, serializedObjects, message]
 import ../actors/actors
@@ -59,12 +60,20 @@ proc getDestroyableTiles(room: var Room): void =
     room.destroyableTilesList = buffer
 
 proc setupMap*(room: var Room, level: int) =
+    for i in 0..<room.enemyList.len:
+        room.enemyList[i] = nil
+
     let json = readFile(fmt"./assets/levels/{level}.json")
     let jNode = parseJson(json)
     let tmxPath = jNode["tilemap"].getStr()
     room.collisions = loadTilemap(tmxPath, "collisions")
     room.camera = Camera(position: VectorF64(x: 0, y: 0))
     room.getDestroyableTiles()
+
+    let actors = loadObjectList(tmxPath, "actors")
+    echo "let's get actor infos"
+    room.loadActors(tmxPath)
+
 
 proc loadRoom*(path: string): Room =
     var room = Room()
@@ -114,6 +123,7 @@ proc serialize*(room: Room): string =
         camera: room.camera,
         switchOn: room.switchOn,
         bulletList: room.bulletList.list,
-        playerList: room.serializePlayers()
+        playerList: room.serializePlayers(),
+        enemyList: room.enemyList
     )
     return toFlatty(r)

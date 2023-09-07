@@ -74,33 +74,14 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
     for i in 0..<6:
         case wallTiles[i].index.Collision:
 
-            of Collision.SOLID:
+            of Collision.SOLID, Collision.DESTROYABLE_TILE, Collision.SWITCH_TILE:
                 let correct = (player.position.x + player.velX + camX) mod 16.0
                 if i < 3:
                 # Left side
-                    player.velX += 16 - correct
+                    player.velX += 16 - correct.floor()
                     break
                 # Right side
-                player.velX -= correct
-                break
-
-            of Collision.DESTROYABLE_TILE:
-                let correct = (player.position.x + player.velX + camX) mod 16.0
-                if i < 3:
-                # Left side
-                    player.velX += 16 - correct
-                    break
-                # Right side
-                player.velX -= correct
-                break
-            of Collision.SWITCH_TILE:
-                let correct = (player.position.x + player.velX + camX) mod 16.0
-                if i < 3:
-                # Left side
-                    player.velX += 16 - correct
-                    break
-                # Right side
-                player.velX -= correct
+                player.velX -= correct.floor()
                 break
             of Collision.TILE_SWITCH_ON:
                 # If the Switch is not ON, the ON tiles are not solid
@@ -108,10 +89,10 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                 let correct = (player.position.x + player.velX + camX) mod 16.0
                 if i < 3:
                 # Left side
-                    player.velX += 16 - correct
+                    player.velX += 16 - correct.floor()
                     break
                 # Right side
-                player.velX -= correct
+                player.velX -= correct.floor()
                 break
             of Collision.TILE_SWITCH_OFF:
                 # If the Switch is ON, the OFF tiles are not solid
@@ -119,10 +100,10 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                 let correct = (player.position.x + player.velX + camX) mod 16.0
                 if i < 3:
                 # Left side
-                    player.velX += 16 - correct
+                    player.velX += 16 - correct.floor()
                     break
                 # Right side
-                player.velX -= correct
+                player.velX -= correct.floor()
                 break
             else:
                 continue
@@ -143,33 +124,14 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
     for i in 0..<4:
         case ceilingTiles[i].index.Collision:
 
-            of Collision.SOLID:
+            of Collision.SOLID, Collision.DESTROYABLE_TILE, Collision.SWITCH_TILE:
                 let correct = (player.position.y + player.velY) mod 16.0
                 if i < 2:
                     # Top side
-                    player.velY += 16 - correct
+                    player.velY += 16 - correct.floor()
                     break
                 # Bottom side
-                player.velY -= correct
-                break
-
-            of Collision.DESTROYABLE_TILE:
-                let correct = (player.position.y + player.velY) mod 16.0
-                if i < 2:
-                    # Top side
-                    player.velY += 16 - correct
-                    break
-                # Bottom side
-                player.velY -= correct
-                break
-            of Collision.SWITCH_TILE:
-                let correct = (player.position.y + player.velY) mod 16.0
-                if i < 2:
-                    # Top side
-                    player.velY += 16 - correct
-                    break
-                # Bottom side
-                player.velY -= correct
+                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0).ceil()
                 break
             of Collision.TILE_SWITCH_ON:
                 if(not loadedRoom.switchOn): continue
@@ -179,7 +141,7 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                     player.velY += 16 - correct
                     break
                 # Bottom side
-                player.velY -= correct
+                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0).ceil()
                 break
             of Collision.TILE_SWITCH_OFF:
                 if(loadedRoom.switchOn): continue
@@ -189,7 +151,7 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                     player.velY += 16 - correct
                     break
                 # Bottom side
-                player.velY -= correct
+                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0).ceil()
                 break
             else:
                 continue

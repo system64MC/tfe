@@ -21,14 +21,25 @@ sprites[1] = loadSpriteset("./assets/sprites/player.png")
 sprites[2] = loadSpriteset("./assets/sprites/characters.png")
 let hud* = loadTilemap("./assets/tilemaps/hud.tmx", "hud")
 let gameOver* = loadTilemap("./assets/tilemaps/gameOver.tmx", "background")
+var scrollTable*: array[18, float]
+var camPos*: VectorF64
 
 proc draw*(player: PlayerSerialize, bitmap: Bitmap): void =
-    bitmap.drawRectWH(player.position.x.int, player.position.y.int, player.hitbox.size.x.int, 1, 0, 0, 1)
-    bitmap.drawRectWH(player.position.x.int, player.position.y.int + player.hitbox.size.y.int, player.hitbox.size.x.int + 1, 1, 0, 0, 1)
-    bitmap.drawRectWH(player.position.x.int, player.position.y.int, 1, player.hitbox.size.y.int, 0, 0, 1)
-    bitmap.drawRectWH(player.position.x.int + player.hitbox.size.x.int, player.position.y.int, 1, player.hitbox.size.y.int, 0, 0, 1)
+    bitmap.drawRectWH(player.position.x.int, player.position.y.int, player.hitbox.size.x.int, 1, 0, 0, 3)
+    bitmap.drawRectWH(player.position.x.int, player.position.y.int + player.hitbox.size.y.int, player.hitbox.size.x.int + 1, 1, 0, 0, 3)
+    bitmap.drawRectWH(player.position.x.int, player.position.y.int, 1, player.hitbox.size.y.int, 0, 0, 3)
+    bitmap.drawRectWH(player.position.x.int + player.hitbox.size.x.int, player.position.y.int, 1, player.hitbox.size.y.int, 0, 0, 3)
     bitmap.drawText(Point(x: (player.position.x.int + player.hitbox.size.x.int shr 1) - (player.name.len * 4) shr 1, y: player.position.y.int - 8), player.name, 2)
     Sprite(player.character + 1).setPosition(player.position.x.int32, player.position.y.int32)
+
+
+proc draw*(enemy: Ennemy, bitmap: Bitmap, offset: float): void =
+    bitmap.drawRectWH((enemy.position.x - offset).int, enemy.position.y.int, enemy.hitbox.size.x.int, 1, 0, 0, 1)
+    bitmap.drawRectWH((enemy.position.x - offset).int, enemy.position.y.int + enemy.hitbox.size.y.int, enemy.hitbox.size.x.int + 1, 1, 0, 0, 1)
+    bitmap.drawRectWH((enemy.position.x - offset).int, enemy.position.y.int, 1, enemy.hitbox.size.y.int, 0, 0, 1)
+    bitmap.drawRectWH((enemy.position.x - offset).int + enemy.hitbox.size.x.int, enemy.position.y.int, 1, enemy.hitbox.size.y.int, 0, 0, 1)
+    # bitmap.drawText(Point(x: (player.position.x.int + player.hitbox.size.x.int shr 1) - (player.name.len * 4) shr 1, y: player.position.y.int - 8), player.name, 2)
+    # Sprite(player.character + 1).setPosition(player.position.x.int32, player.position.y.int32)
 
 proc drawHud*(player: PlayerSerialize): void =
 

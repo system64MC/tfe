@@ -64,6 +64,7 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         setRasterCallback(titleScreenRasterEffect)
         room.cursor.position = 0
     of ROOM_LEVEL:
+        Layer(2).disableAffineTransform()
         # Sprite(1).setSpriteSet(sprites[SpriteTypes.PLAYER.int])
         # room.layers[1] = createBackground("./assets/tilemaps/testRoom.tmx", "background")
         # Layer(1).setTilemap(room.layers[1].layer)
@@ -71,12 +72,22 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         let json = readFile(fmt"./assets/levels/{level}.json")
         let jNode = parseJson(json)
         let tmxPath = jNode["tilemap"].getStr()
+        let tmxPath2 = jNode["background"].getStr()
         let musicPath = jNode["music"].getStr()
         # room.layers[1] = createBackground(tmxPath, "background")
-        Layer(2).disable()
+        # Layer(2).disable()
         room.layers[1] = createBackground(tmxPath, "background")
+        room.layers[2] = createBackground(tmxPath2, "background")
         Layer(1).setTilemap(room.layers[1].layer)
+        Layer(2).setTilemap(room.layers[2].layer)
         if(musicPath != ""): startMusic(musicPath)
+
+        let scrollTab = jNode["scrollTable"].getElems()
+        var idx = 0
+        for item in scrollTab:
+            scrollTable[idx] = item.getFloat()
+            idx.inc
+
         setRasterCallback(levelRasterEffect)
         Layer(0).setTilemap(hud)
         Layer(0).enable
@@ -234,16 +245,24 @@ proc countBullets(room: Room) =
     echo c
 
 proc drawLevel(room: Room, game: Game) =
-    Layer(2).disable
-    # echo fmt"x: {room.data.playerList[0].position.x}, y: {room.data.playerList[0].position.y}"
+    # Layer(2).disable
+    camPos = room.data.camera.position
     Layer(1).setPosition(room.data.camera.position.x.int, room.data.camera.position.y.int)
     if room.needSwitching: room.switchTiles(room.switchState)
+    # Draw players
     for p in room.data.playerList:
         if(p == nil): continue
         if(p.name == game.credentials.name):
             p.drawHud()
         if(p.lifes > 0): p.draw(room.bitmap)
-    # room.data.playerList[0].draw(room.bitmap)
+    
+    # Draw actors
+    for e in room.data.enemyList:
+        if(e == nil): continue
+        # if(e.position.x < 0 or e.position.x >= SCREEN_X - e.hitbox.size.x.float): continue
+        e.draw(room.bitmap, room.data.camera.position.x)
+
+    # Draw bullets
     for b in room.data.bulletList:
         if(b != nil): 
             b.draw(room.bitmap)

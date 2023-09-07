@@ -1,5 +1,26 @@
 {
     "tilemap": "./assets/tilemaps/testRoom.tmx",
+    "background": "./assets/tilemaps/level0bg.tmx",
     "music": "./assets/musics/goddess.kt",
+    "scrollTable": [
+        0.75,
+        0.75,
+        0.50,
+        0.50,
+        0.50,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.75,
+        0.70,
+        0.75,
+        0.75,
+        0.75
+    ],
     "background_color": "#87CEEB"
 }

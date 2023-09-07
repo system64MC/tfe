@@ -35,3 +35,7 @@ proc displayHud*(line: int32) =
 
 proc levelRasterEffect*(line: int32) {.cdecl.} =
     displayHud(line)
+    Layer(2).setPosition(
+        (camPos.x * scrollTable[line shr 3]).int,
+        0
+    )
