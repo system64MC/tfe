@@ -7,6 +7,7 @@ import std/encodings
 import std/json
 import regex
 import crypto
+import common/serializedObjects
 
 # We also validate on server side. NEVER TRUST THE CLIENT!!
 proc validateName(name: string): bool =
@@ -19,6 +20,12 @@ proc validateName(name: string): bool =
 proc validatePassword(password: string): bool =
     if(password.len < 6 and password.len > 32): return false
     return true
+
+proc serializeGames(games: seq[GameORM]): seq[GameScoreSerialize] =
+    var topGamesSerialized = newSeq[GameScoreSerialize](0)
+    for g in games:
+        topGamesSerialized.add(GameScoreSerialize(creator: g.creator.pseudo, score: g.totalScore.int32))
+    return topGamesSerialized
 
 router apiRouter:
     get "/availlableName/@name":
@@ -33,6 +40,11 @@ router apiRouter:
     get "/":
         sleep(3000)
         resp "This is a simple test..."
+
+    get "/top":
+        var games = getTopTenGames().get().serializeGames()
+        let json = %* games
+        resp(Http200, $json, "application/json")
 
     post "/register":
         var myJson = parseJson(request.body)
@@ -58,7 +70,7 @@ router apiRouter:
 
 proc bootApi*(): void {.thread.} =
     {.cast(gcsafe).}:
-        let port = 80.Port
-        let settings = newSettings(port=port)
+        # let port = 80.Port
+        let settings = newSettings(bindAddr="0.0.0.0")
         var jester = initJester(apiRouter, settings=settings)
         jester.serve()

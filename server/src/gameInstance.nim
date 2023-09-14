@@ -90,6 +90,7 @@ proc saveGameFinished(instance: GameInstance) =
 proc saveGameLevel(instance: GameInstance) =
     var game = instance.game
     game.state = HAS_STARTED
+    game.level.inc
     var playerSeq = newSeq[PlayerORM](0)
     for p in instance.infos.loadedRoom.playerList:
         if(p == nil): continue
@@ -279,7 +280,7 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
             else:
                 if(p.lifes > 0):
                     p.state = PLAYER_INVINCIBLE
-                    p.timers[7] = 3 * 60
+                    p.timers[7] = 2 * 60
                 else:
                     p.state = PLAYER_GAMEOVER
         
@@ -311,9 +312,30 @@ proc notifyGameOver(game: GameInstance) =
         game.server.send(c, toFlatty(message.Message(header: EVENT_GAME_OVER, data: $game.game.totalScore)))
     game.server.tick()
 
+proc notifyGameFinished(game: GameInstance) =
+    for c in game.server.connections:
+        game.server.send(c, toFlatty(message.Message(header: EVENT_GAME_FINISHED, data: $game.game.totalScore)))
+    game.server.tick()
+
 proc doGameOverStuff(game: GameInstance) =
     game.saveGameGameOver()
     game.notifyGameOver()
+
+proc doGameFinishedStuff(game: GameInstance) =
+    game.saveGameFinished()
+    game.notifyGameFinished()
+
+proc doLevelFinishedStuff(game: GameInstance) =
+    game.saveGameLevel()
+    for p in game.infos.loadedRoom.playerList:
+        if(p == nil or p.address.isNone()): continue
+        p.state = PLAYER_CONNECTING
+    game.infos.state = WAIT_READY
+    game.infos.loadedRoom.setupMap(game.game.level)
+    echo "level loaded!"
+    for c in game.server.connections:
+        game.notifyLoadLevel(c)
+
 
 
 proc update*(game: GameInstance): void {.gcsafe.} =
@@ -323,21 +345,21 @@ proc update*(game: GameInstance): void {.gcsafe.} =
         game.infos.hub.update()
     of LEVEL:
         if(game.isEveryoneGameOver()): game.infos.state = GameState.GAME_OVER
-        game.infos.loadedRoom.update(game.infos)
-    of DEAD_GAME: return
-    of GAME_OVER: return
+        else: game.infos.loadedRoom.update(game.infos, game.game.level)
+    of DEAD_GAME, GAME_OVER, LEVEL_FINISHED, GAME_FINISHED: return
     of WAIT_READY:
+        # echo "waiting"
         for p in game.infos.loadedRoom.playerList:
-            if(p == nil): continue
-            if(p.state != PLAYER_READY): return
+            if(p == nil or p.address.isNone()): continue
+            if(p.state == PLAYER_CONNECTING): return
             if(p.lifes > 0):
                 p.state = PLAYER_INVINCIBLE
-                p.timers[7] = 3 * 60
+                p.timers[7] = 2 * 60
             else:
                 p.state = PLAYER_GAMEOVER
         game.infos.state = GameState.LEVEL
     else:
-        game.infos.loadedRoom.update(game.infos)
+        game.infos.loadedRoom.update(game.infos, game.game.level)
 
 proc notifyDeadServer*(game: GameInstance) =
     for c in game.server.connections:
@@ -351,6 +373,12 @@ proc serialize*(game: GameInstance): void {.gcsafe.} =
         return
     if(game.infos.state == GAME_OVER):
         game.doGameOverStuff()
+        return
+    if(game.infos.state == LEVEL_FINISHED):
+        game.doLevelFinishedStuff()
+        return
+    if(game.infos.state == GAME_FINISHED):
+        game.doGameFinishedStuff()
         return
     if(game.infos.state != GameState.HUB):
         let d = compress(game.infos.loadedRoom.serialize())
@@ -419,7 +447,7 @@ proc endTick(game: GameInstance) =
 proc bootGameInstance*() {.thread.} =
     var game = GameInstance()
     # Creating the server, listening on the ELIS port (Port 5173)
-    game.server = newReactor("127.0.0.1", 5173)
+    game.server = newReactor("0.0.0.0", 5173)
     game.init()
 
     # Main game loop
@@ -490,7 +518,7 @@ proc loadGameInstanceSave*(save: var GameORM, players: var seq[PlayerORM], maste
     instance.infos.loadedRoom.setupMap(save.level)
     instance.infos.loadedRoom.playerList = playersGame
     instance.infos.state = GameState.LEVEL
-    instance.server = newReactor("127.0.0.1", port.int)
+    instance.server = newReactor("0.0.0.0", port.int)
 
     return instance
     
@@ -504,5 +532,5 @@ proc newGameInstance*(port: Port, master: UserORM, code: string): GameInstance =
     instance.infos.master = Player()
     instance.infos.master.name = master.pseudo
     instance.infos.hub.playerList[0] = instance.infos.master
-    instance.server = newReactor("127.0.0.1", port.int)
+    instance.server = newReactor("0.0.0.0", port.int)
     return instance

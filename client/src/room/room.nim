@@ -15,6 +15,7 @@ type
         ROOM_SCORE,
         ROOM_MUSIC,
         ROOM_GAMEOVER,
+        ROOM_FINISHED,
 
     RoomState* = enum
         NONE,
@@ -35,6 +36,7 @@ type
         state*: RoomState
         finalScore*: int
         validateCounter*: int
+        scoreList*: seq[GameScoreSerialize] = newSeq[GameScoreSerialize](0)
 
     TitleChoices* = enum
         JOIN_GAME,

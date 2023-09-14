@@ -1,0 +1,26 @@
+{
+    "tilemap": "./assets/tilemaps/level1front.tmx",
+    "background": "./assets/tilemaps/level0bg.tmx",
+    "music": "./assets/musics/crashandburn.kt",
+    "scrollTable": [
+        0.75,
+        0.75,
+        0.50,
+        0.50,
+        0.50,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.75,
+        0.70,
+        0.75,
+        0.75,
+        0.75
+    ],
+    "background_color": "#87CEEB"
+}

@@ -11,6 +11,8 @@ type
         DEAD_GAME,
         WAIT_READY,
         GAME_OVER,
+        LEVEL_FINISHED,
+        GAME_FINISHED,
 
     GameInfos* = object
         eventList*: seq[message.Message]

@@ -79,8 +79,8 @@ proc addUserToDb*(name: string, password: string): bool =
     except:
         return false
         
-proc newGame*(creator: UserORM, code: string): GameORM =
-    var game = GameORM(creator: creator, gameCode: code, creationDate: now())
+proc newGame*(creator: UserORM, code: string, state: GameORMState = NONE, score: int = 0): GameORM =
+    var game = GameORM(creator: creator, gameCode: code, creationDate: now(), state: state, totalScore: score)
     return game
 
 func newPlayer*(user: UserORM, game: GameORM): PlayerORM = 
@@ -91,7 +91,7 @@ func newPlayer*(user: UserORM, game: GameORM): PlayerORM =
     )
 
 proc getGameByCode*(code: string): Option[GameORM] {.gcsafe.} =
-    var game = GameORM(newGame(newUser("", ""), ""))
+    var game = newGame(newUser("", ""), "")
     echo code
     try:
         withDbConn(con):
@@ -101,6 +101,27 @@ proc getGameByCode*(code: string): Option[GameORM] {.gcsafe.} =
         return some(game)
     except:
         return none(GameORM)
+
+proc getTopTenGames*(): Option[seq[GameORM]] =
+    var topGames = @[
+        newGame(newUser("", ""), ""),
+    ]
+
+    try:
+        withDbConn(con):
+            # con.rawSelect("""
+            # SELECT gameCode, level, state, creationDate, creator, totalScore, id
+            # FROM GameORM
+            # WHERE GameORM.state = 2 OR GameORM.state = 3
+            # ORDER BY GameORM.totalScore DESC
+            # LIMIT 10
+            # """, topGames)
+            con.select(topGames, "GameORM.state = 2 OR GameORM.state = 3 ORDER BY GameORM.totalScore DESC LIMIT 10")
+        echo repr topGames
+        return some(topGames)
+    except Exception as e:
+        echo "EXCEPTION !!!! -> ", e[]
+        return none(seq[GameORM])
 
 proc save*(game: var seq[GameORM]) =
     try:

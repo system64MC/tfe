@@ -5,12 +5,12 @@ import background
 import ../music/music
 import ../game/game
 import netty
-import ../drawing
-import ../rasterEffects
+import ../[drawing, rasterEffects, globals]
 import flatty
 import tinydialogs
 import json
 import strformat
+import std/[httpclient, asyncdispatch, strutils, marshal]
 
 proc loadLevel*(room: Room, level: int) {.inline.} =
     let json = readFile(fmt"./assets/levels/{level}.json")
@@ -21,6 +21,8 @@ proc loadLevel*(room: Room, level: int) {.inline.} =
     Layer(1).setTilemap(room.layers[1].layer)
     if(musicPath != ""): startMusic(musicPath)
     return
+
+
 
 proc init*(room: Room, musicPath: string = "", level: int = 0) =
     setRasterCallback(nil)
@@ -65,6 +67,7 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         room.cursor.position = 0
     of ROOM_LEVEL:
         Layer(2).disableAffineTransform()
+        Layer(1).setBlendMode(BlendNone, 255)
         # Sprite(1).setSpriteSet(sprites[SpriteTypes.PLAYER.int])
         # room.layers[1] = createBackground("./assets/tilemaps/testRoom.tmx", "background")
         # Layer(1).setTilemap(room.layers[1].layer)
@@ -107,6 +110,35 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
         Layer(0).disable
         Layer(2).disable
         Layer(1).setTilemap(gameOver)
+    of ROOM_FINISHED:
+        Layer(0).disable
+        Layer(2).disable
+        Layer(1).setTilemap(gameFinish)
+    of ROOM_SCORE:
+        room.scoreList.setLen(0)
+        proc getScores(client: AsyncHttpClient): Future[AsyncResponse] {.async.} =
+            var a = await client.get(fmt"http://{serverAddressGlobal}:5000/top")
+            return a
+
+        Layer(2).disable
+        room.layers[1] = createBackground("./assets/tilemaps/scores.tmx", "background")
+        Layer(1).setTilemap(room.layers[1].layer)
+
+        var f = httpClientGlobal.getScores()
+        asyncfutures.addCallback(f,
+            proc (f: Future[AsyncResponse]) {.closure, gcsafe.} =
+                try:
+                    var res = f.read()
+                    {.cast(gcsafe).}:
+                        if(res.status.startsWith("409")):
+                            echo "error"
+                        room.scoreList = to[seq[GameScoreSerialize]](res.body.read)
+                        # echo res.body.read()
+                        # room.kind = ROOM_SCORE
+                except:
+                    echo "error"
+        )
+
     else:
         discard
     if(musicPath != ""): startMusic(musicPath)
@@ -129,7 +161,7 @@ proc updateTitleScreen(room: Room, game: Game) =
             if(room.state == WAITING_HUB_TRANSFER): return
             let code = inputBox("Join a game", "Please enter game code", "")
             room.state = WAITING_HUB_TRANSFER
-            game.connection = game.client.connect("127.0.0.1", 51730)
+            game.connection = game.client.connect(serverAddressGlobal, 51730)
             game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.ENCRYPTED_CREDENTIALS_WITH_CODE, data: toFlatty(CredentialsEncWithCode(gameCode: code, credentials: game.credentials)))))
             # game.room.kind = ROOM_LEVEL
             # game.room.init("./assets/musics/goddess.kt")
@@ -139,11 +171,14 @@ proc updateTitleScreen(room: Room, game: Game) =
             if(room.state == WAITING_HUB_TRANSFER): return
             echo "Create new game..."
             room.state = WAITING_HUB_TRANSFER
-            game.connection = game.client.connect("127.0.0.1", 51730)
+            game.connection = game.client.connect(serverAddressGlobal, 51730)
             game.client.send(game.connection, toFlatty(message.Message(header: MessageHeader.ENCRYPTED_CREDENTIALS_DATA, data: toFlatty(game.credentials))))
             # game.room.kind = ROOM_HUB
             # game.room.init("./assets/musics/select.kt")
         of SCORES:
+            room.kind = ROOM_SCORE
+            room.init("./assets/musics/select.kt")
+            return
             echo "Scores list..."
         of MUSIC_ROOM:
             echo "Open music room"
@@ -190,13 +225,17 @@ proc updateHub(room: Room, game: Game) =
     return
 
 proc updateScoreScreen(room: Room) =
+    drain(16)
+    if(getInput(InputButton2)):
+        room.kind = ROOM_TITLE
+        room.init("./assets/musics/magica.kt")
     return
 
 proc updateGameOver(room: Room) =
     if(getInput(InputStart)):
         room.kind = ROOM_TITLE
         room.validateCounter = 8
-        room.init("magica.kt")
+        room.init("./assets/musics/magica.kt")
 
 proc update*(room: Room, game: Game) =
     case room.kind:
@@ -204,8 +243,10 @@ proc update*(room: Room, game: Game) =
         room.updateTitleScreen(game)
     of ROOM_HUB:
         room.updateHub(game)
-    of ROOM_GAMEOVER:
+    of ROOM_GAMEOVER, ROOM_FINISHED:
         room.updateGameOver()
+    of ROOM_SCORE:
+        room.updateScoreScreen()
     else:
         discard
     return
@@ -244,7 +285,18 @@ proc countBullets(room: Room) =
         if(b != nil): c.inc
     echo c
 
+proc isSomeoneBombing(room: Room): bool =
+    for p in room.data.playerList:
+        if(p == nil): continue
+        if(p.bombTimer > 0): return true
+    return false
+
 proc drawLevel(room: Room, game: Game) =
+    for i in 0..511:
+        Sprite(i).disable()
+    
+    if(room.isSomeoneBombing()): Layer(3).setBlendMode(BlendAdd, 255'u8) 
+    else: Layer(3).setBlendMode(BlendNone, 255'u8)
     # Layer(2).disable
     camPos = room.data.camera.position
     Layer(1).setPosition(room.data.camera.position.x.int, room.data.camera.position.y.int)
@@ -252,15 +304,34 @@ proc drawLevel(room: Room, game: Game) =
     # Draw players
     for p in room.data.playerList:
         if(p == nil): continue
+        if(p.bombTimer > 0): p.drawBombing(room.bitmap)
         if(p.name == game.credentials.name):
             p.drawHud()
         if(p.lifes > 0): p.draw(room.bitmap)
+
+    # Draw bonuses
+    for b in room.data.bonusList:
+        if(b == nil): continue
+        let spr = getAvailableSprite()
+        Sprite(spr).setSpriteSet(sprites[3])
+        Sprite(spr).setPicture(b.bType.int)
+        Sprite(spr).setPosition(b.position.x.int, b.position.y.int)
+        # Sprite(spr).setPosition(50, 50)
+
     
     # Draw actors
     for e in room.data.enemyList:
-        if(e == nil): continue
+        if(e == nil or e.state notin {GO_IN, SHOOTING, SHOOTED, GO_OUT, DYING}): continue
         # if(e.position.x < 0 or e.position.x >= SCREEN_X - e.hitbox.size.x.float): continue
         e.draw(room.bitmap, room.data.camera.position.x)
+
+    # Draw boss
+    if(room.data.boss != nil and room.data.boss.state in {GO_IN, SHOOTING, SHOOTED, GO_OUT, DYING}):
+        room.data.boss.draw(room.bitmap, room.data.camera.position.x)
+
+    # Draw boss lifes
+    if(room.data.isBoss):
+        room.bitmap.drawText(Point(x: 64, y: 130), fmt"boss : {room.data.boss.lifePoints}/{room.data.boss.totalLifePoints}", 1)
 
     # Draw bullets
     for b in room.data.bulletList:
@@ -314,7 +385,31 @@ proc drawHub(room: Room, game: Game) =
     return
 
 proc drawScoreScreen(room: Room) =
-    return
+    const fetchStr = "Fetching scores..."
+    if(room.scoreList.len == 0):
+        var i = 0
+        for c in fetchStr:
+            Layer(1).getTilemap().getTiles(5, 0)[i].index = (c.uint16 + 1)
+            i.inc
+        return
+    else:
+        for i in 0..<fetchStr.len:
+            Layer(1).getTilemap().getTiles(5, 0)[i].index = (1)
+        
+        var idx = 0
+        for s in room.scoreList:
+            let creator = s.creator.alignLeft(16, '.')
+            let score = ($s.score).align(9, '0')
+            var i = 0
+            for c in creator:
+                Layer(1).getTilemap().getTiles(7 + idx, 4)[i].index = (c.uint16 + 1)
+                i.inc
+            i = 0
+            for c in score:
+                Layer(1).getTilemap().getTiles(7 + idx, 22)[i].index = (c.uint16 + 1)
+                i.inc
+            idx.inc
+        
 
 import strutils
 proc drawGameOver(room: Room) =
@@ -323,6 +418,14 @@ proc drawGameOver(room: Room) =
     var i = 0
     for c in str:
         gameOver.getTiles(5, 4)[i].index = (c.uint16 - 22 + 1)
+        i.inc
+
+proc drawGameFinished(room: Room) =
+    Layer(1).setPosition(0, 0)
+    let str = ($room.finalScore).align(9, '0')
+    var i = 0
+    for c in str:
+        gameFinish.getTiles(5, 4)[i].index = (c.uint16 - 22 + 1)
         i.inc
 
 
@@ -337,6 +440,13 @@ proc draw*(room: Room, game: Game) =
         room.drawHub(game)
     of ROOM_GAMEOVER:
         room.drawGameOver()
+    of ROOM_FINISHED:
+        room.drawGameFinished()
+    of ROOM_SCORE:
+        room.drawScoreScreen()
     else:
         discard
     return
+
+proc setMusic*(room: Room, musicPath: string) =
+    if(musicPath != ""): startMusic(musicPath)

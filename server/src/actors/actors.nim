@@ -36,6 +36,7 @@ type
         address*: Option[Address] = none(Address)
         name*: string
         score*: uint32
+        hitbox2*: Hitbox = Hitbox(size: VectorU8(x: 7, y: 7))
 
     # Ennemy* = ref object of Actor
     #     ennemyType*: int
@@ -48,4 +49,14 @@ type
     #     vector*: VectorF64
     #     # currentRoom*: Room
 
-    
+method die*(player: Player) =
+    if(player.lifes > 0): player.lifes.dec
+    player.state = PLAYER_DEAD
+    player.powerUp = SIMPLE
+    player.timers[7] = 3 * 60
+
+proc hurt*(enemy: Enemy, damages: int) =
+    enemy.lifePoints -= damages
+    if(enemy.lifePoints <= 0):
+        enemy.state = DYING
+        enemy.eCountup = 0

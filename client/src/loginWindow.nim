@@ -4,6 +4,7 @@ import nimgl/[opengl, glfw]
 import regex
 import common/credentials
 import libsodium/sodium
+import globals
 
 var
     loginName = newString(16)
@@ -25,7 +26,7 @@ var
     isLogged = false
 
 proc checkNameAvaillability(client: AsyncHttpClient, name: string): Future[AsyncResponse] {.async.} =
-  var a = await client.get(fmt"http://127.0.0.1/availlableName/{name.cstring}")
+  var a = await client.get(fmt"http://{serverAddressGlobal}:5000/availlableName/{name.cstring}")
   echo fmt"name: {name}"
   return a
 
@@ -47,13 +48,13 @@ import std/json
 proc register(client: AsyncHttpClient): Future[AsyncResponse] {.async.} =
     var json = %* {"name": $(registerName.cstring), "password": $(registerPass.cstring)}
     echo $json
-    var a = await client.post("http://127.0.0.1/register", $json)
+    var a = await client.post(fmt"http://{serverAddressGlobal}:5000/register", $json)
     return a
 
 proc login(client: AsyncHttpClient): Future[AsyncResponse] {.async.} =
     var json = %* {"name": $(loginName.cstring), "password": $(loginPass.cstring)}
     echo $json
-    var a = await client.post("http://127.0.0.1/login", $json)
+    var a = await client.post(fmt"http://{serverAddressGlobal}:5000/login", $json)
     return a
 
 proc drawRegisterTab(client: AsyncHttpClient) {.inline, async.} =

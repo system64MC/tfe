@@ -10,14 +10,9 @@ import tilengine/tilengine
 import ../../room/room
 import ../../gameInfos
 import math
+import random
 import common/constants
-
-# Thoses methods has to be declared here to avoid a compiler error that says invalid declaration order.
-# They won't be used anyways, since actor is the root object.
-method update*(actor: Actor, infos: var GameInfos): void {.base.} = 
-    return
-method serialize*(actor: Actor): string {.base.} =
-    return ""
+import bullet
 
 var playerInput*: uint8 = 0b0000_0000 # Input of player.
 
@@ -42,11 +37,6 @@ proc inputRight(player: actors.Player): bool = return ((player.input and 0b0000_
 proc inputFire(player: actors.Player):  bool = return ((player.input and 0b0001_0000) > 0)
 proc inputA(player: actors.Player):     bool = return ((player.input and 0b0010_0000) > 0)
 proc inputB(player: actors.Player):     bool = return ((player.input and 0b0100_0000) > 0)
-
-method die(player: actors.Player) =
-    if(player.lifes > 0): player.lifes.dec
-    player.state = PLAYER_DEAD
-    player.timers[7] = 3 * 60
 
 method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
     if(loadedRoom == nil): return
@@ -131,7 +121,7 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                     player.velY += 16 - correct.floor()
                     break
                 # Bottom side
-                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0).ceil()
+                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + 1 + player.velY) mod 16.0)
                 break
             of Collision.TILE_SWITCH_ON:
                 if(not loadedRoom.switchOn): continue
@@ -141,7 +131,7 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                     player.velY += 16 - correct
                     break
                 # Bottom side
-                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0).ceil()
+                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + 1 + player.velY) mod 16.0)
                 break
             of Collision.TILE_SWITCH_OFF:
                 if(loadedRoom.switchOn): continue
@@ -151,10 +141,11 @@ method checkCollisions(player: actors.Player, loadedRoom: room.Room): void =
                     player.velY += 16 - correct
                     break
                 # Bottom side
-                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + player.velY) mod 16.0).ceil()
+                player.velY -= ((player.position.y + player.hitbox.size.y.float64 + 1 + player.velY) mod 16.0)
                 break
             else:
                 continue
+
 
 # Do not use. This is the old collisions engine. Keeping as archive for now.
 method checkCollisionsOld(player: actors.Player, loadedRoom: room.Room, playerIndex: int8): void =
@@ -348,25 +339,29 @@ method fire*(player: actors.Player, bulletList: var BulletList, playerIndex: int
     player.timers[0] = 5
     return
 
-proc checkCrushedOrKilled*(player: actors.Player, loadedRoom: Room) =
+proc checkCrushedOrKilled*(player: actors.Player, infos: var GameInfos) =
+    let loadedRoom = infos.loadedRoom
     let camX = loadedRoom.camera.position.x
     let map = loadedRoom
     if(player.position.x < 0):
         player.position.x = 0
     if(player.position.x + player.hitbox.size.x.float >= SCREEN_X):
         player.position.x = SCREEN_X - player.hitbox.size.x.float
+    if(player.position.y < 0): player.position.y = 0
+    if(player.position.y + player.hitbox.size.y.float >= SCREEN_Y):
+        player.position.y = SCREEN_Y - player.hitbox.size.y.float
 
     if(player.state != PLAYER_ALIVE): return
     let wallTiles: array[6, Tile] = [
         # Left side
-        getTile(VectorF64(x: player.position.x + camX, y: player.position.y), map),
+        getTile(VectorF64(x: player.position.x + camX, y: player.position.y + 1), map),
         getTile(VectorF64(x: player.position.x + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
-        getTile(VectorF64(x: player.position.x + camX, y: player.position.y + player.hitbox.size.y.float64), map),
+        getTile(VectorF64(x: player.position.x + camX, y: player.position.y + player.hitbox.size.y.float64 - 1), map),
         
         # Right side
-        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y + 1), map),
         getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y + player.hitbox.size.y.float64 / 2), map),
-        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y + player.hitbox.size.y.float64), map),
+        getTile(VectorF64(x: player.position.x + player.hitbox.size.x.float64 + camX, y: player.position.y + player.hitbox.size.y.float64 - 1), map),
     ]
 
     var pointTests: array[6, VectorF64] = [
@@ -381,13 +376,7 @@ proc checkCrushedOrKilled*(player: actors.Player, loadedRoom: Room) =
 
     for tile in wallTiles:
         case tile.index.Collision:
-        of Collision.SOLID:
-            player.die()
-            return
-        of Collision.DESTROYABLE_TILE:
-            player.die()
-            return
-        of Collision.SWITCH_TILE:
+        of Collision.SOLID, DESTROYABLE_TILE, SWITCH_TILE, KILLER_TILE:
             player.die()
             return
         of Collision.TILE_SWITCH_ON:
@@ -398,7 +387,44 @@ proc checkCrushedOrKilled*(player: actors.Player, loadedRoom: Room) =
             if(loadedRoom.switchOn): continue
             player.die()
             return
+        of Collision.BOSS_TRIGGER:
+            if(not loadedRoom.isBoss):
+                loadedRoom.isBoss = true
+                let m = Message(header: message.EVENT_TRIGGER_BOSS, data: "")
+                infos.eventList.add(m)
         else: continue
+
+proc bomb*(player: actors.Player, infos: var GameInfos) =
+    if(player.timers[1] > 0 or player.bombs == 0): return
+    
+    player.timers[1] = 3 * 60
+    for b in infos.loadedRoom.bulletList:
+        if(b == nil): continue
+        if(b.playerId < 0): continue
+        player.score += 30
+        infos.loadedRoom.bulletList.remove(b)
+    for e in infos.loadedRoom.enemyList:
+        if(e == nil): continue
+        let relPos = e.position - infos.loadedRoom.camera.position
+        if(relPos.x < 0 - e.hitbox.size.x.float or relPos.x > SCREEN_X): continue
+        e.hurt(10)
+        if(e.lifePoints <= 0):
+            player.score += 100
+            let dice: int = rand(31)
+            case dice:
+            of 3, 9, 17, 24, 30: infos.addBonus(DOUBLE, relPos)
+            of 1, 5, 14, 28, 31: infos.addBonus(TRIPLE, relPos)
+            of 2, 4, 18: infos.addBonus(ONE_UP, relPos)
+            of 6, 10, 19, 12: infos.addBonus(BOMB_UP, relPos)
+            else: discard
+
+    if(infos.loadedRoom.isBoss):
+        var boss = infos.loadedRoom.boss
+        let relPos = boss.position - infos.loadedRoom.camera.position
+        if(relPos.x >= 0 - boss.hitbox.size.x.float and relPos.x <= SCREEN_X):
+            boss.hurt(10)
+
+    player.bombs.dec
 
 method update*(player: actors.Player, infos: var GameInfos, playerIndex: int8): void =
     if(player.isNil): return
@@ -409,29 +435,30 @@ method update*(player: actors.Player, infos: var GameInfos, playerIndex: int8): 
     if(player.state == PLAYER_DEAD and player.timers[7] == 0):
         if(player.lifes > 0):
             player.state = PLAYER_INVINCIBLE
-            player.timers[7] = 3 * 60
+            player.timers[7] = 2 * 60
         else:
             player.state = PLAYER_GAMEOVER
     if(player.state == PLAYER_INVINCIBLE and player.timers[7] == 0): player.state = PLAYER_ALIVE
 
     if(player.state == PLAYER_DEAD or player.lifes == 0): return
-    if(player.inputUp()   ): player.velY -= 2 * player.deltaTime * TPS
-    if(player.inputDown() ): player.velY += 2 * player.deltaTime * TPS
-    if(player.inputLeft() ): player.velX -= 2 * player.deltaTime * TPS
-    if(player.inputRight()): player.velX += 2 * player.deltaTime * TPS
+    if(player.inputUp()   ): player.velY -= 2 #* TPS # TODO : maybe lag compensation ?
+    if(player.inputDown() ): player.velY += 2 #* TPS
+    if(player.inputLeft() ): player.velX -= 2 #* TPS
+    if(player.inputRight()): player.velX += 2 #* TPS
     if(player.inputFire() ): player.fire(infos.loadedRoom.bulletList, playerIndex)
+    if(player.inputB()    ): player.bomb(infos)
 
     # TODO : Remove this
-    if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0
-    if(player.inputB()): infos.loadedRoom.camera.velocity.x =  1.0
-    infos.loadedRoom.camera.position.x += infos.loadedRoom.camera.velocity.x
+    # if(player.inputA()): infos.loadedRoom.camera.velocity.x = -1.0
+    # if(player.inputB()): infos.loadedRoom.camera.velocity.x =  1.0
+    # infos.loadedRoom.camera.position.x += infos.loadedRoom.camera.velocity.x
     
     if(player.state == PLAYER_ALIVE): player.checkCollisions(infos.loadedRoom)
-
     player.position.x += player.velX
     player.position.y += player.velY
-    player.checkCrushedOrKilled(infos.loadedRoom)
-    infos.loadedRoom.camera.velocity.x = 0
+
+    player.checkCrushedOrKilled(infos)
+    # infos.loadedRoom.camera.velocity.x = 0
     player.velX = 0
     player.velY = 0
     player.input = 0
@@ -460,5 +487,6 @@ method serialize*(player: actors.Player): PlayerSerialize =
     p.state = player.state
     p.powerup = player.powerup
     p.score = player.score
+    p.bombTimer = player.timers[1].int
     return p
     # return toFlatty(message.Message(header: MessageHeader.PLAYER_DATA, data: toFlatty(p)))

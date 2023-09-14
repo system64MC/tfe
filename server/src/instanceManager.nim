@@ -20,6 +20,7 @@ type
 
 import random
 proc randomStr(): string =
+  randomize()
   for _ in 0..<8:
     add(result, char(rand(int('a')..int('z'))))
 
@@ -184,7 +185,7 @@ proc bootInstanceManager*() {.thread.} =
     for i in 0..<256:
         instanceMan.freePorts.add(Port(51731 + i))
 
-    instanceMan.server = newReactor("127.0.0.1", 51730)
+    instanceMan.server = newReactor("0.0.0.0", 51730)
     echo "Instance Manager Booted!"
 
     while true:

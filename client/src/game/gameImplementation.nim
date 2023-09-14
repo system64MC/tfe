@@ -5,9 +5,10 @@ import game
 import ../room/[room, roomImplementation]
 import netty
 import flatty
-import std/[times, tables, strutils, strformat]
+import std/[json, times, tables, strutils, strformat, httpclient, asyncDispatch]
 import supersnappy
 import tinydialogs
+import ../globals
 # import background
 
 proc init*(credentials: CredentialsEncrypted): Game =
@@ -19,7 +20,7 @@ proc init*(credentials: CredentialsEncrypted): Game =
     game.room.kind = RoomKind.ROOM_TITLE
     game.room.init("./assets/musics/magica.kt") # Execute init method on base object
     
-    setTargetFps(120)
+    setTargetFps(60)
     createWindow(flags = {cwfNoVsync})
     setWindowTitle(fmt"Magica Online ~ {credentials.name}")
     game.client = newReactor()
@@ -77,7 +78,7 @@ proc fetchMessages*(game: Game) =
         of MessageHeader.OK_JOIN_SERVER:
             let port = myMsg.data.parseInt()
             game.client.disconnect(game.connection)
-            game.connection = game.client.connect("127.0.0.1", port)
+            game.connection = game.client.connect(serverAddressGlobal, port)
             game.client.send(game.connection, toFlatty(message.Message(header: ENCRYPTED_CREDENTIALS_DATA, data: toFlatty(game.credentials))))
         of MessageHeader.OK_JOIN_HUB:
             echo "Welcome to hub"
@@ -124,6 +125,14 @@ proc fetchMessages*(game: Game) =
             game.room.switchState = lvData.switchState
             game.client.send(game.connection, toFlatty(message.Message(header: PLAYER_READY, data: "")))
 
+        of MessageHeader.EVENT_GAME_FINISHED:
+            game.client.disconnect(game.connection)
+            game.room.state = NONE
+            let score = myMsg.data.parseInt()
+            game.room.kind = ROOM_FINISHED
+            game.room.finalScore = score
+            game.room.init("")
+
         of MessageHeader.EVENT_GAME_OVER:
             game.client.disconnect(game.connection)
             game.room.state = NONE
@@ -136,6 +145,9 @@ proc fetchMessages*(game: Game) =
             game.client.disconnect(game.connection)
             var a = messageBox("Error!", "You are already connected in this game!", DialogType.Ok, IconType.Error, Button.Yes)
             game.room.state = NONE
+        
+        of MessageHeader.EVENT_TRIGGER_BOSS:
+            game.room.setMusic("./assets/musics/fight.kt")
         else:
             continue
 

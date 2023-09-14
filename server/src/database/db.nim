@@ -35,8 +35,24 @@ proc seedDb*(): void =
     var games = @[
         newGame(users[0], "test"),
         newGame(users[1], "abcdefgh"),
-        newGame(users[2], "aaaaaa")
+        newGame(users[2], "aaaaaa"),
+
+        
+        newGame(users[4], "aeaeae", GAME_OVER   , 100),
+        newGame(users[0], "xxxxxx", HAS_FINISHED, 495),
+        newGame(users[1], "vvvvvv", HAS_FINISHED, 123),
+        newGame(users[3], "azerty", HAS_FINISHED, 891),
+        newGame(users[3], "uuuuuu", GAME_OVER   , 20),
+        
+        newGame(users[2], "azazaz", HAS_FINISHED, 400),
+        newGame(users[0], "pppppp", GAME_OVER   , 80),
+        newGame(users[2], "iiiiii", HAS_FINISHED, 1000),
+        newGame(users[1], "cccccc", HAS_FINISHED, 900),
+        newGame(users[4], "eeeeee", HAS_FINISHED, 900),
+
+        newGame(users[4], "wwwwww", GAME_OVER   , 64),
     ]
+
     var players = @[
         newPlayer(users[0], games[0]),
         newPlayer(users[1], games[0]),

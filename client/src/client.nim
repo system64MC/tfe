@@ -11,75 +11,23 @@ import common/constants
 import room/background
 import tilengine/bitmapUtils
 import std/monotimes
-import std/[times, os, tables, httpclient, asyncdispatch, strformat]
+import std/[json, times, os, tables, httpclient, asyncdispatch, strformat]
 import loginWindow
 import common/[credentials, commonActors, serializedObjects]
 import drawing
 import game/[game, gameImplementation]
-
-proc serializeInputs(): string =
-  var input = (
-    getInput(InputButton3).uint8 shl 6 or
-    getInput(InputButton2).uint8 shl 5 or
-    getInput(InputButton1).uint8 shl 4 or
-
-    getInput(Inputup).uint8 shl 3 or
-    getInput(Inputdown).uint8 shl 2 or
-    getInput(Inputleft).uint8 shl 1 or
-    getInput(Inputright).uint8)
-  return toFlatty(EventInput(input: input, sentAt: getTime().toUnixFloat()))
-
-
-
-# proc `$`(vec: VectorI16): string = return ("x: " & $vec.x & " y: " & $vec.y)
-
-# proc unserializePos(data: string): VectorI16 = return fromFlatty(data, VectorI16)
-
-# var bulletList*: array[512, Bullet]
-
-# var cam = Camera(position: VectorF64(x: 0, y: 0))
-
-# proc getTile*(pos: VectorF64, currentRoom: Room): Tile =
-#     return currentRoom.collisions.getTile(pos.y.int shr 4, pos.x.int shr 4)
-
-# TODO : This part needs to be optimized. Is it possible to use animations instead?
-# Maybe I should contact Tilengine's developer to know if there is an easy way to take
-# advantage of animations.
-proc switchTiles(map: Tilemap, switchOn: bool) =
-  for j in 0..<map.getRows:
-    for i in 0..<map.getCols:
-      var tile = map.getTile(j, i)
-      if(tile.index > 1 and tile.index < 8):
-        if(switchOn):
-          if tile.index == 3: tile.index = 2
-          if tile.index == 5: tile.index = 4
-          if tile.index == 6: tile.index = 7
-          map.setTile(j, i, tile)
-          continue
-        if tile.index == 2: tile.index = 3
-        if tile.index == 4: tile.index = 5
-        if tile.index == 7: tile.index = 6
-        map.setTile(j, i, tile)
-
-var switchState = true
-var needSwitching = false
+import globals
 
 var creds: CredentialsEncrypted
-var room = RoomSerialize(
-  camera: Camera(position: VectorF64(x: 0, y: 0)),
-  playerList: [PlayerSerialize(), nil, nil, nil]
-)
-
-import supersnappy
-proc unserializeRoom(data: string) =
-    # echo data.len
-    let r = fromFlatty(uncompress(data), RoomSerialize)
-    if(r != nil): room = r
-    # else: echo "ERROR"
 
 proc main() =
-  var httpClient = newAsyncHttpClient()
-  creds = waitFor openLoginWindow(httpClient)
+
+  let json = readFile("./assets/config.json")
+  let jNode = parseJson(json)
+  serverAddressGlobal = jNode["serverAddress"].getStr()
+
+  httpClientGlobal = newAsyncHttpClient()
+  creds = waitFor openLoginWindow(httpClientGlobal)
   # initBitmapLayer()
 
   # var client = newReactor()
@@ -94,8 +42,6 @@ proc main() =
   # var map = loadTilemap("assets/tilemaps/testRoom.tmx", "background")
   # foreground.setTilemap(map)
   var game = gameImplementation.init(creds)
-
-  
 
   while processWindow():
     game.update()

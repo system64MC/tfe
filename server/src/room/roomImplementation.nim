@@ -4,7 +4,7 @@ import ../camera
 import common/[vectors, constants, commonActors, serializedObjects, message]
 import ../actors/actors
 import ../actors/bulletList
-import ../actors/implementations/[player, bullet]
+import ../actors/implementations/[player, bullet, enemy, bonus]
 import tilengine/tilengine
 import std/tables
 import ../gameInfos
@@ -30,6 +30,20 @@ proc updateBullets(room: Room, infos: var GameInfos) =
 
         b.update(infos)
 
+proc updateEnemies(room: Room, infos: var GameInfos) =
+    for e in infos.loadedRoom.enemyList:
+        if(e == nil): continue
+        e.update(infos)
+
+proc updateBonus(room: Room, infos: var GameInfos) =
+    for b in infos.loadedRoom.bonusList:
+        if(b == nil): continue
+        b.update(infos)
+
+proc updateBoss(room: Room, infos: var GameInfos, level: int) =
+    if(room.boss != nil):
+        room.boss.updateBoss(infos, level)
+
 
     # for i in 0..<game.infos.loadedRoom.bulletList.list.len:
     #     var b = game.infos.loadedRoom.bulletList[i]
@@ -43,11 +57,14 @@ proc updateBullets(room: Room, infos: var GameInfos) =
     #         continue
     #     b.update(game.infos)
 
-proc update*(room: Room, infos: var GameInfos): void =
+proc update*(room: Room, infos: var GameInfos, level: int): void =
     if(infos.state == GameState.WAIT_READY): return
     room.camera.update(room)
     room.updatePlayers(infos)
+    room.updateEnemies(infos)
+    room.updateBoss(infos, level)
     room.updateBullets(infos)
+    room.updateBonus(infos)
 
 proc getDestroyableTiles(room: var Room): void =
     var buffer = initTable[VectorI64, bool]()
@@ -60,8 +77,16 @@ proc getDestroyableTiles(room: var Room): void =
     room.destroyableTilesList = buffer
 
 proc setupMap*(room: var Room, level: int) =
+    if(room.collisions != nil):
+        room.collisions.delete()
+        room.collisions = nil
+
     for i in 0..<room.enemyList.len:
         room.enemyList[i] = nil
+
+    for p in room.playerList:
+        if(p == nil): continue
+        p.position = VectorF64(x: 50, y: 50)
 
     let json = readFile(fmt"./assets/levels/{level}.json")
     let jNode = parseJson(json)
@@ -69,8 +94,8 @@ proc setupMap*(room: var Room, level: int) =
     room.collisions = loadTilemap(tmxPath, "collisions")
     room.camera = Camera(position: VectorF64(x: 0, y: 0))
     room.getDestroyableTiles()
-
-    let actors = loadObjectList(tmxPath, "actors")
+    room.isBoss = false
+    # let actors = loadObjectList(tmxPath, "actors")
     echo "let's get actor infos"
     room.loadActors(tmxPath)
 
@@ -124,6 +149,9 @@ proc serialize*(room: Room): string =
         switchOn: room.switchOn,
         bulletList: room.bulletList.list,
         playerList: room.serializePlayers(),
-        enemyList: room.enemyList
+        enemyList: room.enemyList,
+        bonusList: room.bonusList,
+        isBoss: room.isBoss,
+        boss: room.boss
     )
     return toFlatty(r)

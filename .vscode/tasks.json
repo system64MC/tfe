@@ -22,6 +22,16 @@
             "problemMatcher": []
         },
         {
+            "label": "build-all-release",
+            "detail": "build le client et le server (release",
+            "group": "build",
+            "dependsOn": [
+                "build-client-release",
+                "build-server-release"
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "run-client",
             "detail": "Démarre le client",
             "type": "shell",
@@ -68,6 +78,34 @@
             "detail": "Compile le serveur",
             "type": "shell",
             "command": "./build-server.bat",
+            "options": {
+                // "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "presentation": {
+                "group": "servers"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-client-release",
+            "detail": "Compile le client (release)",
+            "type": "shell",
+            "command": "./build-client-rel.bat",
+            "options": {
+                // "cwd": "${workspaceFolder}/frontend"
+            },
+            "group": "build",
+            "presentation": {
+                "group": "servers"
+            },
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-server-release",
+            "detail": "Compile le serveur (release)",
+            "type": "shell",
+            "command": "./build-server-rel.bat",
             "options": {
                 // "cwd": "${workspaceFolder}/frontend"
             },
