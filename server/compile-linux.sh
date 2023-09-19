@@ -1,0 +1,1 @@
+nimble build --mm:arc -d:release

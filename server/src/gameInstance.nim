@@ -157,7 +157,9 @@ proc authenticateLevel(instance: GameInstance, msg: netty.Message): bool {.gcsaf
                 instance.connectionsToVerify.excl(msg.conn.address)
                 return false
             instance.infos.loadedRoom.playerList[index].address = some(msg.conn.address)
-        
+            if(instance.infos.loadedRoom.playerList[index].name == instance.infos.master.name):
+                instance.infos.state = GameState.LEVEL
+
             instance.notifyLoadLevel(msg.conn)
             # instance.server.send(msg.conn, toFlatty(message.Message(header: OK_JOIN_LEVEL, data: $instance.game.level)))
             instance.connectionsToVerify.excl(msg.conn.address)
@@ -280,7 +282,7 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
             else:
                 if(p.lifes > 0):
                     p.state = PLAYER_INVINCIBLE
-                    p.timers[7] = 2 * 60
+                    p.timers[7] = 1 * 60
                 else:
                     p.state = PLAYER_GAMEOVER
         
@@ -302,10 +304,17 @@ proc fetchMessages*(game: GameInstance) {.gcsafe.} =
             p.deltaTimeHowManyValues = 0
 
 proc isEveryoneGameOver(game: GameInstance): bool =
+    # if game.infos.state != LEVEL: return false
+    if(game.infos.master.state == PLAYER_DISCONNETED or game.infos.master.address.isNone): return false
+    var gameOverNum = 0
     for p in game.infos.loadedRoom.playerList:
-        if(p == nil): continue
-        if(p.lifes > 0): return false
-    return true
+        if(p == nil or p.state == PLAYER_DISCONNETED or p.address.isNone):
+            gameOverNum.inc
+            continue
+        if(p.lifes == 0 or p.state == PLAYER_GAMEOVER):
+            gameOverNum.inc
+        # gameOverNum += ().int
+    return gameOverNum == 4
 
 proc notifyGameOver(game: GameInstance) =
     for c in game.server.connections:
@@ -354,7 +363,7 @@ proc update*(game: GameInstance): void {.gcsafe.} =
             if(p.state == PLAYER_CONNECTING): return
             if(p.lifes > 0):
                 p.state = PLAYER_INVINCIBLE
-                p.timers[7] = 2 * 60
+                p.timers[7] = 1 * 60
             else:
                 p.state = PLAYER_GAMEOVER
         game.infos.state = GameState.LEVEL
@@ -474,7 +483,7 @@ proc bootGameInstance2*(game: GameInstance) {.thread.} =
     game.init()
 
     # Main game loop
-    while game.infos.state notin {DEAD_GAME, GAME_OVER}:
+    while game.infos.state notin {DEAD_GAME, GAME_OVER, GAME_FINISHED}:
         # echo "begin :", game.infos.state
         game.beginTick()
         # echo "tick start :", game.infos.state
@@ -505,7 +514,8 @@ proc loadGameInstanceSave*(save: var GameORM, players: var seq[PlayerORM], maste
             bombs: pOrm.bombs,
             powerUp: pOrm.powerup.Powerup,
             position: VectorF64(x: 50, y: 50),
-            hitbox: Hitbox(size: VectorU8(x: 15, y: 23))
+            hitbox: Hitbox(size: VectorU8(x: 15, y: 23)),
+            score: pOrm.score.uint32
         )
         if(master.pseudo == playersGame[i].name):
             instance.infos.master = playersGame[i]
@@ -517,7 +527,7 @@ proc loadGameInstanceSave*(save: var GameORM, players: var seq[PlayerORM], maste
     instance.infos.loadedRoom.bulletList = initBulletList()
     instance.infos.loadedRoom.setupMap(save.level)
     instance.infos.loadedRoom.playerList = playersGame
-    instance.infos.state = GameState.LEVEL
+    instance.infos.state = GameState.WAIT_READY
     instance.server = newReactor("0.0.0.0", port.int)
 
     return instance

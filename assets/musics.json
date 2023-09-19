@@ -1,3 +1,27 @@
-{
-    "serverAddress":"127.0.0.1"
-}
+[
+    {
+        "path":"./assets/musics/magica.kt",
+        "name":"Magica Pulsing in my Heart",
+        "desc":"This is my first song used for the title screen."
+    },
+    {
+        "path":"./assets/musics/goddess.kt",
+        "name":"Four dimmensionals goddess of Existence",
+        "desc":"This is Ombrage Magica's theme."
+    },
+    {
+        "path":"./assets/musics/select.kt",
+        "name":"Select your character!",
+        "desc":"The song that plays in the character select screen."
+    },
+    {
+        "path":"./assets/musics/fight.kt",
+        "name":"Let's fight!",
+        "desc":"Boss theme."
+    },
+    {
+        "path":"./assets/musics/crashandburn.kt",
+        "name":"Crash and burn",
+        "desc":"This is a cover of a song from a game called Epic Pinball."
+    }
+]

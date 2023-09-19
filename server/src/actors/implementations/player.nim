@@ -435,7 +435,7 @@ method update*(player: actors.Player, infos: var GameInfos, playerIndex: int8): 
     if(player.state == PLAYER_DEAD and player.timers[7] == 0):
         if(player.lifes > 0):
             player.state = PLAYER_INVINCIBLE
-            player.timers[7] = 2 * 60
+            player.timers[7] = 1 * 60
         else:
             player.state = PLAYER_GAMEOVER
     if(player.state == PLAYER_INVINCIBLE and player.timers[7] == 0): player.state = PLAYER_ALIVE

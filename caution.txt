@@ -1,0 +1,6 @@
+In case of problems with the server (LAG) :
+
+1 : remove the latest version of httpbeast
+2 : remove the httpbeast entry from Nimble file
+3 : change the TPS back to 60
+4 : Switch back to Windows as server

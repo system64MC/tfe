@@ -9,5 +9,5 @@ method update*(camera: Camera, room: Room): void {.base, gcsafe.} =
         camera.position.x = (room.collisions.getCols() * 16 - SCREEN_X).float
     # return
 
-method serialize*(camera: Camera): string {.base, gcsafe.} = 
-    return toFlatty(message.Message(header: MessageHeader.CAMERA_DATA, data: toFlatty(camera)))
+# method serialize*(camera: Camera): string {.base, gcsafe.} = 
+#     return toFlatty(message.Message(header: MessageHeader.CAMERA_DATA, data: toFlatty(camera)))

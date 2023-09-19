@@ -4,6 +4,7 @@ import strutils
 var player: ptr structkplayert = nil
 var song: ptr structksongt = nil
 var info: ptr Ksonginfo
+var meters* = newSeq[int32](256)
 
 
 proc initMusic*(freq: uint): void =
@@ -65,3 +66,20 @@ proc getCurSongInfo*(): string =
     infoStr = infoStr & '\t' & $info[].instrumentname[i] & '\n'
   #echo info.nchannels
   return infoStr
+
+proc getNumChannels*(): int32 =
+  if(song == nil): return 0
+  info = Ksndgetsonginfo(song, info)
+  return info[].nchannels
+
+proc getSongPosition*(): int =
+  if(song == nil or player == nil): return 0
+  return Ksndgetplayposition(player)
+
+proc getSongLength*(): int =
+  if(song == nil): return 0
+  return Ksndgetsonglength(song)
+
+proc getMeters*() =
+  if(song == nil or player == nil): return
+  Ksndgetvumeters(player, meters[0].addr, getNumChannels())

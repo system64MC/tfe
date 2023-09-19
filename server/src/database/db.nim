@@ -5,7 +5,7 @@ import conn
 import nimcrypto
 import nimcrypto/pbkdf2
 
-const DBNAME = "game.db"
+var DBNAME = getCurrentDir() & "/game.db"
 
 proc insertPlayers*(players: var array[4, PlayerORM], game: var GameORM) = 
     echo "saving to DB"
@@ -21,8 +21,9 @@ proc insertPlayers*(players: var array[4, PlayerORM], game: var GameORM) =
 const SEED = true
 
 proc seedDb*(): void =
+    echo getCurrentDir()
     if(SEED): removeFile(DBNAME)
-    initConnectionPool(DBNAME, 10000)
+    initConnectionPool(DBNAME, 256)
     if(not SEED): return
     # Creating data
     var users = @[
@@ -72,36 +73,15 @@ proc seedDb*(): void =
         );
         """))
 
-        # con.exec(SqlQuery(
-        # """
-        # CREATE TABLE GameORM(
-        #     gameCode TEXT NOT NULL,
-        #     creator INTEGER NOT NULL,
-        #     level INTEGER NOT NULL,
-        #     isFinished INTEGER NOT NULL,
-        #     hasStarted INTEGER NOT NULL,
-        #     creationDate FLOAT NOT NULL,
-        #     id INTEGER NOT NULL PRIMARY KEY,
-        #     FOREIGN KEY(creator) REFERENCES "UserORM"(id))
-        # """))
-
         # Creating tables
         con.createTables(games[0])
         con.createTables(players[0])
 
-        # con.exec(SqlQuery(
-        # """
-        # CREATE UNIQUE INDEX unique_code ON GameORM(code);
-        # """))
+        con.exec(SqlQuery(
+        """
+        CREATE UNIQUE INDEX unique_code ON GameORM(gameCode);
+        """))
 
-        # Seeding data into the Database.
         con.insert(users)
         con.insert(games)
         con.insert(players)
-    # var game = newGame(users[0], "test")
-    # var gamePlayers: array[4, PlayerORM] = [
-    #     newPlayer(users[0], game),
-    #     newPlayer(users[1], game),
-    #     newPlayer(users[2], game),
-    #     nil]
-    # insertPlayers(gamePlayers, game)

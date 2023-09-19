@@ -4,6 +4,8 @@ import common/constants
 import background
 import tilengine/tilengine
 import ../music/music
+import marshal
+import json
 
 const NUM_BACKGRONDS* = 3
 
@@ -49,3 +51,7 @@ type
         position*: int
         timer*: int
 
+    Music* = object
+        path*, name*, desc*: string
+
+let musicList* = to[seq[Music]](readFile("./assets/musics.json"))

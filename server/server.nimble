@@ -8,11 +8,11 @@ srcDir        = "src"
 binDir        = "out"
 bin           = @["server"]
 
-
 # Dependencies
 
 requires "nim >= 2.0.0"
 requires "file:///C:/Users/nicol/Documents/programmation/TFE/common"
+requires "https://github.com/dom96/httpbeast#head"
 requires "flatty"
 requires "netty"
 requires "libsodium"

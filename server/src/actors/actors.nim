@@ -53,7 +53,7 @@ method die*(player: Player) =
     if(player.lifes > 0): player.lifes.dec
     player.state = PLAYER_DEAD
     player.powerUp = SIMPLE
-    player.timers[7] = 3 * 60
+    player.timers[7] = 1 * 60
 
 proc hurt*(enemy: Enemy, damages: int) =
     enemy.lifePoints -= damages

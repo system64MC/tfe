@@ -139,6 +139,13 @@ proc init*(room: Room, musicPath: string = "", level: int = 0) =
                     echo "error"
         )
 
+    of ROOM_MUSIC:
+        Layer(0).disable
+        Layer(1).disable
+        Layer(2).disable
+        pauseSong()
+        room.cursor.position = 0
+
     else:
         discard
     if(musicPath != ""): startMusic(musicPath)
@@ -181,16 +188,18 @@ proc updateTitleScreen(room: Room, game: Game) =
             return
             echo "Scores list..."
         of MUSIC_ROOM:
-            echo "Open music room"
+            room.validateCounter = 8
+            room.kind = ROOM_MUSIC
+            room.init("")
         of EXIT:
             quit()
     return
 
-proc updateLevel(room: Room) =
-    return
-
-proc updateMusicRoom(room: Room) =
-    return
+proc updateLevel(room: Room, game: Game) =
+    if(getInput(InputButton2)):
+        game.client.disconnect(game.connection)
+        room.kind = ROOM_TITLE
+        room.init("./assets/musics/magica.kt")
 
 proc isCharacterAvaillable(selectCharacter: int8, myName: string, playerList: array[4, PlayerSerialize]): bool =
     for p in playerList:
@@ -203,6 +212,10 @@ proc isCharacterAvaillable(selectCharacter: int8, myName: string, playerList: ar
 
 
 proc updateHub(room: Room, game: Game) =
+    if(getInput(InputButton2)):
+        game.client.disconnect(game.connection)
+        room.kind = ROOM_TITLE
+        room.init("./assets/musics/magica.kt")
     room.cursor.timer.dec
     if(room.cursor.timer <= 0):
         if(room.state != CHARACTER_SELECTED):
@@ -237,16 +250,40 @@ proc updateGameOver(room: Room) =
         room.validateCounter = 8
         room.init("./assets/musics/magica.kt")
 
+proc updateMusicRoom(room: Room) =
+    room.cursor.timer.dec
+    room.validateCounter.dec
+    if(room.cursor.timer <= 0):
+        if(getInput(InputRight)):
+            room.cursor.position = min(room.cursor.position + 1, musicList.len - 1)
+            room.cursor.timer = 8
+        if(getInput(InputLeft)):
+            room.cursor.position = max(room.cursor.position - 1, 0)
+            room.cursor.timer = 8
+    if(getInput(InputStart)):
+        if(room.validateCounter > 0): return
+        startMusic(musicList[room.cursor.position].path)
+        room.validateCounter = 8
+    if(getInput(InputButton2)):
+        room.kind = ROOM_TITLE
+        room.init("./assets/musics/magica.kt")
+    getMeters()
+    return
+
 proc update*(room: Room, game: Game) =
     case room.kind:
     of ROOM_TITLE:
         room.updateTitleScreen(game)
     of ROOM_HUB:
         room.updateHub(game)
+    of ROOM_LEVEL:
+        room.updateLevel(game)
     of ROOM_GAMEOVER, ROOM_FINISHED:
         room.updateGameOver()
     of ROOM_SCORE:
         room.updateScoreScreen()
+    of ROOM_MUSIC:
+        room.updateMusicRoom()
     else:
         discard
     return
@@ -277,6 +314,21 @@ proc drawTitleScreen(room: Room) =
     Sprite(0).setPosition(80, 48 + (16 * room.cursor.position))
     Layer(1).setBlendMode(BlendNone, 255)
     return
+
+proc drawMusicRoom(room: Room) =
+    room.bitmap.drawText(Point(x: 16, y: 16), musicList[room.cursor.position].name,2)
+    room.bitmap.drawText(Point(x: 16, y: 32), musicList[room.cursor.position].desc,2)
+    let length = getSongLength() - 1
+    let pos = getSongPosition()
+    # room.bitmap.drawText(Point(x: 16, y: 64), fmt"Row {getSongPosition()}/{getSongLength() - 1}",2)
+    room.bitmap.drawRectWH(16, 48, 100, 8, color = 1)
+    room.bitmap.drawRectWH(16, 48, ((pos.float / length.float) * 100).int, 8, color = 3)
+
+    for i in 0..<getNumChannels():
+        let h = (min((meters[i].float / 128) * 32, 32)).int
+        let sub = 32 - h
+        room.bitmap.drawRectWH(16 * (i + 1), 128 + sub - 32, 8, h, color = 1)
+        room.bitmap.drawText(Point(x: 16 * (i + 1), y: 136), ($(i + 1)).align(2, '0'),2)
 
 import std/strformat
 proc countBullets(room: Room) =
@@ -338,8 +390,6 @@ proc drawLevel(room: Room, game: Game) =
         if(b != nil): 
             b.draw(room.bitmap)
 
-proc drawMusicRoom(room: Room) =
-    return
 
 const names = @[
     "",
@@ -444,6 +494,8 @@ proc draw*(room: Room, game: Game) =
         room.drawGameFinished()
     of ROOM_SCORE:
         room.drawScoreScreen()
+    of ROOM_MUSIC:
+        room.drawMusicRoom()
     else:
         discard
     return

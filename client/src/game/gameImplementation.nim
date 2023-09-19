@@ -53,6 +53,7 @@ proc fetchMessages*(game: Game) =
         game.client.send(game.connection, toFlatty(message.Message(header: EVENT_INPUT, data: serializeInputs())))
     for msg in game.client.messages:
         let myMsg = fromFlatty(msg.data, message.Message)
+        # echo myMsg.header
         case myMsg.header:
         of MessageHeader.ROOM_DATA: 
             # echo "room data"
@@ -67,14 +68,14 @@ proc fetchMessages*(game: Game) =
             game.room.needSwitching = true
             let e = fromFlatty(myMsg.data, events.EventSwitch)
             game.room.switchState = e.state
-        of MessageHeader.DESTROYABLE_TILES_DATA:
-            echo "Received data!"
-            let list = fromFlatty(myMsg.data, Table[VectorI64, bool])
-            for coordinates, isHere in list:
-                if(not isHere):
-                    var tile = game.room.layers[1].layer.getTile(coordinates.y, coordinates.x)
-                    tile.index = 1
-                    game.room.layers[1].layer.setTile(coordinates.y, coordinates.x, tile)
+        # of MessageHeader.DESTROYABLE_TILES_DATA:
+        #     echo "Received data!"
+        #     let list = fromFlatty(myMsg.data, Table[VectorI64, bool])
+        #     for coordinates, isHere in list:
+        #         if(not isHere):
+        #             var tile = game.room.layers[1].layer.getTile(coordinates.y, coordinates.x)
+        #             tile.index = 1
+        #             game.room.layers[1].layer.setTile(coordinates.y, coordinates.x, tile)
         of MessageHeader.OK_JOIN_SERVER:
             let port = myMsg.data.parseInt()
             game.client.disconnect(game.connection)
@@ -97,6 +98,12 @@ proc fetchMessages*(game: Game) =
             game.client.disconnect(game.connection)
             var a = messageBox("Error!", "This game does not exist!\n Call Ombrage Magica to bring it to Existence!", DialogType.Ok, IconType.Error, Button.Yes)
             game.room.state = NONE
+
+        of MessageHeader.ERROR_FINISHED:
+            game.client.disconnect(game.connection)
+            var a = messageBox("Error!", "This game is already finished!", DialogType.Ok, IconType.Error, Button.Yes)
+            game.room.state = NONE
+
         of MessageHeader.EVENT_SERVER_DEAD:
             game.client.disconnect(game.connection)
             game.room.kind = ROOM_TITLE

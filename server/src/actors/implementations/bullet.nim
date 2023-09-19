@@ -164,12 +164,12 @@ proc toSerializeObject*(bullet: Bullet): BulletSerialize =
     b.bulletId = bullet.bulletId
     return b
 
-method serialize*(bullet: Bullet): string = 
-    var b = BulletSerialize()
-    b.position = bullet.position
-    b.hitbox = bullet.hitbox
-    b.velX = bullet.velX
-    b.velY = bullet.velY
-    b.bulletType = bullet.bulletType
-    b.bulletId = bullet.bulletId
-    return toFlatty(message.Message(header: MessageHeader.BULLET_DATA, data: toFlatty(b)))
+# method serialize*(bullet: Bullet): string = 
+#     var b = BulletSerialize()
+#     b.position = bullet.position
+#     b.hitbox = bullet.hitbox
+#     b.velX = bullet.velX
+#     b.velY = bullet.velY
+#     b.bulletType = bullet.bulletType
+#     b.bulletId = bullet.bulletId
+#     return toFlatty(message.Message(header: MessageHeader.BULLET_DATA, data: toFlatty(b)))

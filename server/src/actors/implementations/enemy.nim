@@ -257,18 +257,19 @@ proc updateBoss666(enemy: Enemy, infos:var GameInfos) =
                 infos.loadedRoom.bulletList.add(b)
             
             if(enemy.lifePoints <= 75 and enemy.lifePoints > 50):
-                for i in 0..10:
-                    let b = Bullet(
-                        playerId: -1, 
-                        bulletType: 0, 
-                        vector: VectorF64(x: 36 * (10 - i).float64, y: 2.5),
-                        position: VectorF64(
-                            x: (enemy.position.x - infos.loadedRoom.camera.position.x) + enemy.hitbox.size.x.float64 / 2,
-                            y: (enemy.position.y - infos.loadedRoom.camera.position.y) + enemy.hitbox.size.y.float64 / 2
-                        ),
-                        bulletId: infos.loadedRoom.bulletList.getFreeIndex().uint16, 
-                    )
-                    infos.loadedRoom.bulletList.add(b)
+                if((enemy.eCountup and 15) == 0):
+                    for i in 0..10:
+                        let b = Bullet(
+                            playerId: -1, 
+                            bulletType: 0, 
+                            vector: VectorF64(x: 36 * (10 - i).float64, y: 2.5),
+                            position: VectorF64(
+                                x: (enemy.position.x - infos.loadedRoom.camera.position.x) + enemy.hitbox.size.x.float64 / 2,
+                                y: (enemy.position.y - infos.loadedRoom.camera.position.y) + enemy.hitbox.size.y.float64 / 2
+                            ),
+                            bulletId: infos.loadedRoom.bulletList.getFreeIndex().uint16, 
+                        )
+                        infos.loadedRoom.bulletList.add(b)
 
             if(enemy.lifePoints <= 50 and enemy.lifePoints > 25):
                 if((enemy.eCountup and 15) == 0):
@@ -371,18 +372,19 @@ proc updateBoss667(enemy: Enemy, infos:var GameInfos) =
                         infos.loadedRoom.bulletList.add(b)
             
             if(enemy.lifePoints <= 75 and enemy.lifePoints > 50):
-                for i in 0..10:
-                    let b = Bullet(
-                        playerId: -1, 
-                        bulletType: 0, 
-                        vector: VectorF64(x: 36 * (10 - i).float64, y: 2.5),
-                        position: VectorF64(
-                            x: (enemy.position.x - infos.loadedRoom.camera.position.x) + enemy.hitbox.size.x.float64 / 2,
-                            y: (enemy.position.y - infos.loadedRoom.camera.position.y) + enemy.hitbox.size.y.float64 / 2
-                        ),
-                        bulletId: infos.loadedRoom.bulletList.getFreeIndex().uint16, 
-                    )
-                    infos.loadedRoom.bulletList.add(b)
+                if((enemy.eCountup and 15) == 0):
+                    for i in 0..10:
+                        let b = Bullet(
+                            playerId: -1, 
+                            bulletType: 0, 
+                            vector: VectorF64(x: 36 * (10 - i).float64, y: 2.5),
+                            position: VectorF64(
+                                x: (enemy.position.x - infos.loadedRoom.camera.position.x) + enemy.hitbox.size.x.float64 / 2,
+                                y: (enemy.position.y - infos.loadedRoom.camera.position.y) + enemy.hitbox.size.y.float64 / 2
+                            ),
+                            bulletId: infos.loadedRoom.bulletList.getFreeIndex().uint16, 
+                        )
+                        infos.loadedRoom.bulletList.add(b)
 
             if(enemy.lifePoints <= 50 and enemy.lifePoints > 25):
                 let b = Bullet(

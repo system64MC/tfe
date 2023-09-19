@@ -8,6 +8,11 @@ import ../actors/actors
 import ../actors/bulletList
 
 type
+  CollisionsMap* = ref object
+    tiles*: seq[uint16]
+    width*: int
+    height*: int
+
   Room* = ref object
     camera*: Camera
     collisions*: Tilemap

@@ -29,6 +29,7 @@ type
         NONE,
         NOT_MASTER,
         NOT_EXIST,
+        SESSION_FINISHED,
         PORTS_FULL
 
 proc getInstanceFromDatabase(instanceMan: InstanceMan, user: UserORM, code: string): tuple[error: ErrorCreate, port: Option[Port]] =
@@ -37,6 +38,8 @@ proc getInstanceFromDatabase(instanceMan: InstanceMan, user: UserORM, code: stri
     if(game.isNone):
         return (NOT_EXIST, none(Port))
     echo "the game exists"
+    if(game.get().state in {GameORMState.HAS_FINISHED, GameORMState.GAME_OVER}):
+        return (SESSION_FINISHED, none(Port))
     if(game.get().creator.pseudo != user.pseudo): return (NOT_MASTER, none(Port))
 
     let port = instanceMan.freePorts.head.value
@@ -148,6 +151,10 @@ proc authenticate(instanceMan: InstanceMan, msg: netty.Message): bool {.gcsafe.}
                     return false
                 of PORTS_FULL:
                     instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_CREATE_GAME, data: "")))
+                    instanceMan.connectionsToVerify.excl(msg.conn.address)
+                    return false
+                of SESSION_FINISHED:
+                    instanceMan.server.send(msg.conn, toFlatty(message.Message(header: ERROR_FINISHED, data: "")))
                     instanceMan.connectionsToVerify.excl(msg.conn.address)
                     return false
                 # If we have a port, we retrieve the right instance
